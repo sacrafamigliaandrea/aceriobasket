@@ -1073,6 +1073,11 @@ ridimensiona();
 // canestro: anello a (-5.1, 2.05, -3.15), raggio .19 (sopra la lavagna)
 const CANESTRO=new THREE.Vector3(-5.1,2.05,-3.15);
 const R_ANELLO=.19, R_PALLA=.075;
+// tolleranza del canestro: se la palla scende dentro questo raggio dal centro
+// dell'anello viene considerata "entrata" e il ferro non la respinge. Tenuta
+// generosa apposta perché il gioco sia divertente e si possa segnare al 100%
+// da ogni postazione senza dover azzeccare parabola e forza al millimetro.
+if(typeof window.CAPTURA!=='number') window.CAPTURA=.18;
 const TIRI_TOT=8;
 
 // ---- MODALITÀ PERCORSO: 8 postazioni a difficoltà crescente ----
@@ -1216,15 +1221,75 @@ function pulsaMarker(t){
 
 // suoni: piccolo sintetizzatore WebAudio (nessuna dipendenza)
 let audioCtx=null;
+function ac(){                                   // AudioContext condiviso, sempre "sveglio"
+  audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
 function suona(freq,dur,tipo,vol){
   try{
-    audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
-    const o=audioCtx.createOscillator(), gn=audioCtx.createGain();
+    const ctx=ac();
+    const o=ctx.createOscillator(), gn=ctx.createGain();
     o.type=tipo||'sine'; o.frequency.value=freq;
-    gn.gain.setValueAtTime(vol||.15,audioCtx.currentTime);
-    gn.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+(dur||.15));
-    o.connect(gn); gn.connect(audioCtx.destination);
-    o.start(); o.stop(audioCtx.currentTime+(dur||.15));
+    gn.gain.setValueAtTime(vol||.15,ctx.currentTime);
+    gn.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+(dur||.15));
+    o.connect(gn); gn.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime+(dur||.15));
+  }catch(e){}
+}
+// ---- suoni fisici del pallone (sintetizzati, senza file esterni) ----
+function bufferRumore(dur){                       // rumore bianco riutilizzabile
+  const ctx=ac(), n=Math.max(1,Math.floor(ctx.sampleRate*dur));
+  const b=ctx.createBuffer(1,n,ctx.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
+  return b;
+}
+// CLANG metallico sul ferro dell'anello (intensità 0..1 → più forte l'urto, più squilla)
+function suonoFerro(intensita){
+  try{ const ctx=ac(), t=ctx.currentTime, v=Math.min(.30,.14+.18*(intensita||0));
+    [[1650,'triangle',1],[2470,'square',.5],[3180,'triangle',.35]].forEach(pr=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type=pr[1]; o.frequency.setValueAtTime(pr[0],t);
+      g.gain.setValueAtTime(v*pr[2],t); g.gain.exponentialRampToValueAtTime(.001,t+.19);
+      o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+.19);
+    });
+    const src=ctx.createBufferSource(); src.buffer=bufferRumore(.05);
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2700; bp.Q.value=7;
+    const g=ctx.createGain(); g.gain.setValueAtTime(v*.6,t); g.gain.exponentialRampToValueAtTime(.001,t+.06);
+    src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t+.06);
+  }catch(e){}
+}
+// THUD sordo sul tabellone/lavagna
+function suonoTabellone(){
+  try{ const ctx=ac(), t=ctx.currentTime, v=.24;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(240,t); o.frequency.exponentialRampToValueAtTime(115,t+.14);
+    g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.001,t+.17);
+    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+.17);
+    const src=ctx.createBufferSource(); src.buffer=bufferRumore(.09);
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=520;
+    const g2=ctx.createGain(); g2.gain.setValueAtTime(v*.7,t); g2.gain.exponentialRampToValueAtTime(.001,t+.1);
+    src.connect(lp); lp.connect(g2); g2.connect(ctx.destination); src.start(t); src.stop(t+.1);
+  }catch(e){}
+}
+// BONK di gomma quando il pallone rimbalza (pavimento/tavoli)
+function suonoRimbalzo(intensita){
+  try{ const ctx=ac(), t=ctx.currentTime, v=Math.min(.22,.07+.15*(intensita||0));
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(190,t); o.frequency.exponentialRampToValueAtTime(85,t+.09);
+    g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.001,t+.1);
+    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+.1);
+  }catch(e){}
+}
+// SWISH della rete, sovrapposto al suono del canestro
+function suonoRete(){
+  try{ const ctx=ac(), t=ctx.currentTime;
+    const src=ctx.createBufferSource(); src.buffer=bufferRumore(.26);
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=1.1;
+    bp.frequency.setValueAtTime(3600,t); bp.frequency.exponentialRampToValueAtTime(1200,t+.22);
+    const g=ctx.createGain(); g.gain.setValueAtTime(.0001,t);
+    g.gain.linearRampToValueAtTime(.17,t+.03); g.gain.exponentialRampToValueAtTime(.001,t+.24);
+    src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t+.26);
   }catch(e){}
 }
 // suono del canestro: file mp3 integrato nell'HTML (data-URI base64)
@@ -1340,7 +1405,18 @@ function dirSguardo(){
 function puntiPerDistanza(d){ return d<2?1 : d<4?2 : d<6?3 : d<8?4 : 5; }
 
 // velocità di lancio in funzione del caricamento (m/s)
-function velocitaTiro(pot){ return 4.4+pot*8.6; }
+// velocità di lancio ADATTIVA alla distanza dal canestro: al 100% di potenza
+// la forza è già "giusta" per la distanza, così basta trovare l'arco. La
+// potenza modula intorno a quel valore (meno potenza = tiro corto).
+function velocitaTiro(pot){
+  const dx=camera.position.x-CANESTRO.x, dz=camera.position.z-CANESTRO.z;
+  const d=Math.sqrt(dx*dx+dz*dz);          // distanza orizzontale dal canestro
+  // Curva tarata sul motore fisico reale (rimbalzi su ferro/tabellone): al 100%
+  // di potenza esiste un canestro da OGNI postazione (verificato: min 4 angoli
+  // utili per postazione). Base 3.9 + 0.74*d dà la forza giusta per la distanza;
+  // la potenza modula da 0.62 a 1.0 di quel valore.
+  return (3.9+0.74*d)*(0.62+0.38*pot);
+}
 // punto di partenza della palla (davanti-basso alla camera)
 function puntoLancio(dir){
   return camera.position.clone().addScaledVector(dir,.4).setY(camera.position.y-.10);
@@ -1666,32 +1742,40 @@ function fisicaPalla(dt){
   palla.position.addScaledVector(G.vel,dt);
   const p=palla.position;
   // pavimento
-  if(p.y<R_PALLA){ p.y=R_PALLA; G.vel.y*=-.55; G.vel.x*=.8; G.vel.z*=.8;
-    if(Math.abs(G.vel.y)>.6) suona(120,.06,'sine',.08); }
+  if(p.y<R_PALLA){ const imp=Math.abs(G.vel.y); p.y=R_PALLA; G.vel.y*=-.55; G.vel.x*=.8; G.vel.z*=.8;
+    if(imp>.5) suonoRimbalzo(imp/6); }
   // piani dei tavoli
   if(G.vel.y<0 && dentroTavolo(p.x,p.z) && p.y-R_PALLA<.8 && p.y-R_PALLA>.62){
-    p.y=.8+R_PALLA; G.vel.y*=-.5; suona(160,.05,'sine',.07);
+    const imp=Math.abs(G.vel.y); p.y=.8+R_PALLA; G.vel.y*=-.5; suonoRimbalzo(imp/6);
   }
   // pareti
   if(p.x> 7.9-R_PALLA){ p.x= 7.9-R_PALLA; G.vel.x*=-.6; }
   if(p.x<-7.9+R_PALLA){ p.x=-7.9+R_PALLA; G.vel.x*=-.6; }
   if(p.z> 3.25-R_PALLA){ p.z= 3.25-R_PALLA; G.vel.z*=-.6; }
-  if(p.z<-3.25+R_PALLA){ p.z=-3.25+R_PALLA; G.vel.z*=-.6; }
-  // lavagna come tabellone
-  if(p.z-R_PALLA<-3.2 && p.x>-4.9 && p.x<-2.3 && p.y>1.05 && p.y<2.4 && G.vel.z<0){
-    p.z=-3.2+R_PALLA; G.vel.z*=-.55; suona(200,.05,'sine',.07);
+  // parete est (fondo dietro il canestro): intercetto PRIMA tabellone e lavagna,
+  // poi il muro nudo. Così il rimbalzo "a tabella" scatta con il suo suono e non
+  // viene mangiato dal clamp del muro (che invertiva vel.z prima del check).
+  if(p.z<-3.25+R_PALLA && G.vel.z<0){
+    p.z=-3.25+R_PALLA;
+    if(p.x>-5.5 && p.x<-4.7 && p.y>2.06 && p.y<2.6){        // TABELLONE da basket (bank shot, sopra il ferro)
+      G.vel.z*=-.5; G.vel.y*=.85; suonoTabellone();
+    } else if(p.x>-4.9 && p.x<-2.3 && p.y>1.05 && p.y<2.4){ // LAVAGNA come tabella laterale
+      G.vel.z*=-.55; suonoTabellone();
+    } else {                                                // muro nudo
+      G.vel.z*=-.6;
+    }
   }
   // anello: rimbalzo sul ferro
   const dx=p.x-CANESTRO.x, dz=p.z-CANESTRO.z;
   const dOr=Math.sqrt(dx*dx+dz*dz);
-  if(Math.abs(p.y-CANESTRO.y)<R_PALLA && Math.abs(dOr-R_ANELLO)<R_PALLA*.9){
+  if(dOr>=window.CAPTURA && Math.abs(p.y-CANESTRO.y)<R_PALLA && Math.abs(dOr-R_ANELLO)<R_PALLA*.9){
     const nx=dx/(dOr||1), nz=dz/(dOr||1);
     const dot=G.vel.x*nx+G.vel.z*nz;
     G.vel.x-=1.6*dot*nx; G.vel.z-=1.6*dot*nz; G.vel.multiplyScalar(.75);
-    suona(320,.05,'triangle',.09);
+    suonoFerro(Math.min(1,Math.abs(dot)/4));
   }
   // CANESTRO: attraversa il piano dell'anello scendendo, dentro il cerchio
-  if(!G.segnato && G.yPrec>CANESTRO.y && p.y<=CANESTRO.y && dOr<R_ANELLO-.055 && G.vel.y<0){
+  if(!G.segnato && G.yPrec>CANESTRO.y && p.y<=CANESTRO.y && dOr<window.CAPTURA && G.vel.y<0){
     G.segnato=true;
     if(G.modo==='percorso'){
       const pt=valoreCanestro(G.tappa,G.tiriStazione-1); G.punti+=pt; G.tappaFatta=true;
@@ -1700,7 +1784,7 @@ function fisicaPalla(dt){
       G.punti+=G.valeTiro;
       splash('CANESTRO! +'+G.valeTiro,'#ffb35c');
     }
-    aggiornaHud(); suonoCanestro();
+    aggiornaHud(); suonoCanestro(); suonoRete();
   }
   G.yPrec=p.y;
   // fine del tiro
