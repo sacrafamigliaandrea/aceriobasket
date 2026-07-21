@@ -40,11 +40,19 @@
   #mirino::before,#mirino::after{content:'';position:absolute;background:rgba(255,255,255,.85)}
   #mirino::before{left:8px;top:0;width:2px;height:18px}
   #mirino::after{top:8px;left:0;width:18px;height:2px}
-  #barraPot{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);
-    width:220px;height:12px;border-radius:8px;overflow:hidden;
+  #barraPot{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);
+    width:240px;height:14px;border-radius:8px;overflow:hidden;
     background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);display:none}
   #barraPot i{display:block;height:100%;width:0%;
     background:linear-gradient(90deg,#ffd28a,#f5a742,#e8641e)}
+  /* tacche numeriche ogni 10%, più marcate a 25/50/75/100 */
+  #barraPotTacche{position:absolute;inset:0;pointer-events:none;
+    background:
+      repeating-linear-gradient(90deg,transparent 0,transparent calc(10% - 1px),rgba(255,255,255,.30) calc(10% - 1px),rgba(255,255,255,.30) 10%),
+      repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),rgba(255,255,255,.7) calc(25% - 1px),rgba(255,255,255,.7) 25%)}
+  #barraPotNum{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);
+    font-size:12px;font-weight:700;color:#ffd28a;text-shadow:0 1px 4px rgba(0,0,0,.6);
+    display:none;letter-spacing:.5px}
   #istruzioni{position:fixed;bottom:16px;left:18px;
     padding:11px 15px;font-size:12px;text-align:left;opacity:.92;line-height:1.75;max-width:340px}
   #istruzioni b{color:var(--arancio-chiaro)}
@@ -95,6 +103,11 @@
     font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:17px;cursor:pointer;
     backdrop-filter:blur(6px)}
   #btnInfo:hover{background:var(--arancio);border-color:var(--arancio)}
+  #btnEsci{position:fixed;bottom:16px;right:174px;z-index:12;
+    background:var(--panel);color:#fff;border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:600;cursor:pointer;
+    backdrop-filter:blur(6px)}
+  #btnEsci:hover{background:var(--arancio);border-color:var(--arancio)}
   #regole{display:none}
   .regole-box{max-width:560px;text-align:left}
   .regole-box h2{text-align:center;margin-bottom:14px}
@@ -122,7 +135,7 @@
   <div id="listaCase"></div>
 </div>
 <div id="mirino"></div>
-<div id="barraPot"><i id="barraPotFill"></i></div>
+<div id="barraPot"><i id="barraPotFill"></i><div id="barraPotTacche"></div></div><span id="barraPotNum">0%</span>
 <div id="istruzioni" class="pann">
   <div><b>Click</b> — blocca il mouse per mirare</div>
   <div><b>Frecce ← ↑ ↓ →</b> — muoviti nell'aula</div>
@@ -131,6 +144,7 @@
 </div>
 <div id="splash"></div>
 <button id="btnMusica"><svg viewBox="0 0 16 16"><path d="M6 2v8.2a2.5 2.5 0 1 0 1.5 2.3V5.5l6-1.5v5.2a2.5 2.5 0 1 0 1.5 2.3V2z"/></svg><span>Musica</span></button>
+<button id="btnEsci" title="Torna al menu">‹ Esci</button>
 <button id="btnInfo" title="Come si gioca">i</button>
 
 <div class="overlay" id="regole">
@@ -533,7 +547,8 @@ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
 const BG_LAB=new THREE.Color(0xdfe8ee), BG_POR=new THREE.Color(0x04150d);
 scene.background=BG_LAB.clone();
-const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.05,600);
+// FOV ampio: da vicino, alzando la parabola, il canestro resta nell'inquadratura
+const camera=new THREE.PerspectiveCamera(82,innerWidth/innerHeight,.05,600);
 
 // luci
 scene.add(new THREE.AmbientLight(0xffffff,.55));
@@ -1293,7 +1308,8 @@ addEventListener('keydown',e=>{
     e.preventDefault();
     const colpiDisp = G.modo==='percorso' ? !G.tappaFatta : G.tiri>0;
     if(G.gioco && !G.introVolo && !G.volo && colpiDisp && !G.inCarica){
-      G.inCarica=true; G.potenza=0; $('barraPot').style.display='block';
+      G.inCarica=true; G.potenza=0;
+      $('barraPot').style.display='block'; $('barraPotNum').style.display='block';
       suona(200,.05,'square',.06);
     }
   }
@@ -1303,7 +1319,7 @@ addEventListener('keyup',e=>{
   // rilascia lo spazio: lancia
   if((e.code==='Space'||e.key===' ') && G.inCarica){
     e.preventDefault();
-    G.inCarica=false; $('barraPot').style.display='none';
+    G.inCarica=false; $('barraPot').style.display='none'; $('barraPotNum').style.display='none';
     tira();
   }
 });
@@ -1312,7 +1328,7 @@ canvasEl.addEventListener('click',()=>{ if(G.gioco && document.pointerLockElemen
 addEventListener('mousemove',e=>{
   if(document.pointerLockElement===canvasEl){
     yaw-=e.movementX*.0024; pitch-=e.movementY*.0024;
-    pitch=Math.max(-1.3,Math.min(1.35,pitch));
+    pitch=Math.max(-1.1,Math.min(1.05,pitch));   // limite in alto: il canestro resta sempre in vista
   }
 });
 // (il tiro si comanda con la BARRA SPAZIO; il mouse serve solo a mirare)
@@ -1415,6 +1431,23 @@ function fermaLive(){
 }
 // se chiudi/abbandoni, esci dalla gara
 addEventListener('pagehide',()=>{ try{ inviaHeartbeat(true); }catch(e){} });
+
+// ---------- ESCI: chiudi la partita e torna al menu iniziale ----------
+function tornaAlMenu(){
+  if(G.modo==='percorso'){ try{ inviaHeartbeat(true); }catch(e){} }
+  fermaLive();
+  G.gioco=false; G.introVolo=false; G.volo=false; G.inCarica=false;
+  document.exitPointerLock();
+  markerTappe.visible=false; preview.visible=false; mira3D.visible=false;
+  if(typeof braccia!=='undefined') braccia.visible=false;
+  palla.visible=false;
+  $('barraPot').style.display='none'; $('barraPotNum').style.display='none';
+  $('fine').style.display='none'; $('regole').style.display='none';
+  $('titolo').querySelector('p').textContent='Sacra Famiglia — sfida a distanza';
+  G.modo='libera';
+  $('avvio').style.display='flex';
+}
+$('btnEsci').addEventListener('click',tornaAlMenu);
 function mostraClassifica(righe){
   const top=righe.slice().sort((a,b)=>b.p-a.p).slice(0,10);
   $('listaClass').innerHTML=top.length
@@ -1488,8 +1521,11 @@ function aggiornaHud(){
 
 // ---------- avvio / fine ----------
 // il nome vive solo per la sessione: alla chiusura del browser sparisce
-localStorage.removeItem('canestro_nome');   // ripulisci eventuali vecchi salvataggi persistenti
-$('nome').value=sessionStorage.getItem('canestro_nome')||'';
+// il nome NON viene ricordato tra un accesso e l'altro: campo sempre vuoto all'apertura.
+// (cancello anche eventuali residui, anche se il browser ripristina la sessione)
+localStorage.removeItem('canestro_nome');
+sessionStorage.removeItem('canestro_nome');
+$('nome').value='';
 // id di sessione anonimo per la gara live (anch'esso volatile)
 const SID=(()=>{ let s=sessionStorage.getItem('canestro_sid');
   if(!s){ s='s'+Math.floor(performance.now()*1000).toString(36)+Math.round(performance.timeOrigin).toString(36); sessionStorage.setItem('canestro_sid',s); }
@@ -1523,7 +1559,6 @@ function casaSceltaOk(){
 function avviaLibera(){
   if(!casaSceltaOk()) return;
   G.nome=($('nome').value.trim()||'Anonimo').slice(0,16);
-  sessionStorage.setItem('canestro_nome',G.nome);
   G.modo='libera'; G.introVolo=false; markerTappe.visible=false;
   $('avvio').style.display='none';
   G.gioco=true; G.punti=0; G.tiri=TIRI_TOT; aggiornaHud();
@@ -1536,7 +1571,6 @@ $('btnGioca').onclick=avviaLibera;
 function avviaPercorso(){
   if(!casaSceltaOk()) return;
   G.nome=($('nome').value.trim()||'Anonimo').slice(0,16);
-  sessionStorage.setItem('canestro_nome',G.nome);
   G.modo='percorso';
   $('avvio').style.display='none';
   G.gioco=true; G.punti=0; G.tappa=0;
@@ -1548,26 +1582,32 @@ function avviaPercorso(){
 }
 $('btnPercorso').onclick=avviaPercorso;
 
-// volo panoramico iniziale: mostra le postazioni e atterra sulla prima
-let introCurve=null, introTarget=null;
+// volo panoramico iniziale (25s): orbita più volte l'aula mostrando le
+// postazioni, poi scende e atterra sulla prima. Il ritmo segue la musica.
+let orbitaCurve=null, introTarget=null;
+const INTRO_DUR=25, INTRO_GIRI=2.5, INTRO_QUOTA_ORBITA=0.82;  // 82% orbita, 18% atterraggio
 function voloIntro(alTermine){
-  // percorso della telecamera: parte in alto dall'ingresso, sorvola le tappe,
-  // scende sulla prima postazione
-  const s0=STAZIONI[0];
-  introCurve=new THREE.CatmullRomCurve3([
-    new THREE.Vector3( 7.2, 2.8,  2.2),
-    new THREE.Vector3( 3.0, 2.6, -1.4),
-    new THREE.Vector3(-1.0, 2.3, -2.3),
-    new THREE.Vector3(-4.5, 2.5,  1.8),
-    new THREE.Vector3(-6.8, 2.0, -1.6),
-    new THREE.Vector3( s0.x, 1.5, s0.z)
-  ],false,'catmullrom',.5);
-  // sguardo: dai marcatori sul pavimento al canestro, per l'atterraggio
-  const dFin=CANESTRO.clone().sub(new THREE.Vector3(s0.x,1.5,s0.z));
+  const s0=STAZIONI[0], p0=new THREE.Vector3(s0.x,1.5,s0.z);
+  // anello chiuso attorno al perimetro dell'aula, in quota
+  orbitaCurve=new THREE.CatmullRomCurve3([
+    new THREE.Vector3( 6.6, 2.4,  2.7),
+    new THREE.Vector3( 0.0, 2.7,  2.9),
+    new THREE.Vector3(-6.6, 2.4,  2.7),
+    new THREE.Vector3(-7.4, 2.2,  0.0),
+    new THREE.Vector3(-6.6, 2.5, -2.7),
+    new THREE.Vector3( 0.0, 2.8, -2.9),
+    new THREE.Vector3( 6.6, 2.5, -2.7),
+    new THREE.Vector3( 7.4, 2.2,  0.0)
+  ],true,'catmullrom',.5);   // closed = true (orbita)
+  // punto d'orbita al momento dell'atterraggio (per una discesa fluida)
+  orbitaCurve.__uLand=(INTRO_GIRI%1);
+  orbitaCurve.__posLand=orbitaCurve.getPointAt(orbitaCurve.__uLand);
+  // sguardo: al centro dell'aula (dove pulsano i marcatori) → poi al canestro
+  const dFin=CANESTRO.clone().sub(p0);
   const yaw0=Math.atan2(-dFin.x,-dFin.z), pit0=0.42;
   const dir0=new THREE.Vector3(-Math.sin(yaw0)*Math.cos(pit0),Math.sin(pit0),-Math.cos(yaw0)*Math.cos(pit0));
-  introTarget={ inizio:new THREE.Vector3(-3,0.35,-1.2), fine:new THREE.Vector3(s0.x,1.5,s0.z).add(dir0.multiplyScalar(2)) };
-  G.introVolo=true; G.introT=0; G.introDur=5.2; G.introDone=alTermine;
+  introTarget={ centro:new THREE.Vector3(-2.2,0.55,-0.9), fine:p0.clone().add(dir0.multiplyScalar(2)), p0:p0 };
+  G.introVolo=true; G.introT=0; G.introDur=INTRO_DUR; G.introDone=alTermine;
   preview.visible=false; mira3D.visible=false; braccia.visible=false;
 }
 
@@ -1585,6 +1625,9 @@ function posizionaStazione(i){
   aggiornaHud();
 }
 function superaTappa(){
+  // registra SUBITO il punteggio cumulativo: se il percorso non viene finito,
+  // i punti fatti finora restano comunque salvati (tiri infiniti)
+  segnaPunteggio(G.nome,G.punti,'percorso');
   if(G.tappa+1>=STAZIONI.length){ finePercorso(); return; }
   posizionaStazione(G.tappa+1);
 }
@@ -1683,10 +1726,18 @@ function animate(){
   // VOLO INIZIALE del Percorso: la telecamera sorvola le tappe e atterra
   if(G.introVolo){
     G.introT=Math.min(1,G.introT+dt/G.introDur);
-    const e=G.introT<.5?2*G.introT*G.introT:1-Math.pow(-2*G.introT+2,2)/2;  // easeInOut
-    camera.position.copy(introCurve.getPoint(e));
-    const look=introTarget.inizio.clone().lerp(introTarget.fine,Math.min(1,e*1.15));
-    camera.lookAt(look);
+    const t=G.introT, tO=INTRO_QUOTA_ORBITA;
+    if(t<tO){
+      // FASE ORBITA: giri multipli attorno all'aula, sguardo al centro
+      const u=((t/tO)*INTRO_GIRI)%1;
+      camera.position.copy(orbitaCurve.getPointAt(u));
+      camera.lookAt(introTarget.centro);
+    } else {
+      // FASE ATTERRAGGIO: discesa dall'orbita alla prima postazione
+      const e=(t-tO)/(1-tO), s=e<.5?2*e*e:1-Math.pow(-2*e+2,2)/2;   // easeInOut
+      camera.position.copy(orbitaCurve.__posLand.clone().lerp(introTarget.p0,s));
+      camera.lookAt(introTarget.centro.clone().lerp(introTarget.fine,s));
+    }
     if(G.introT>=1){
       G.introVolo=false;
       if(G.introDone) G.introDone();
@@ -1719,7 +1770,9 @@ function animate(){
     // carica del tiro
     if(G.inCarica){
       G.potenza=Math.min(1,G.potenza+dt*.85);
-      $('barraPotFill').style.width=(G.potenza*100)+'%';
+      const pc=Math.round(G.potenza*100);
+      $('barraPotFill').style.width=pc+'%';
+      $('barraPotNum').textContent='Potenza '+pc+'%';
     }
     // braccia + palla in mano: la palla si vede quando puoi tirare, sparisce in volo;
     // durante la carica le braccia si alzano e la palla arretra (caricamento)
