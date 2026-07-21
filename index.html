@@ -222,6 +222,48 @@ function branoPerModo(){ return G.modo==='percorso' ? YT_MUSICA_PERCORSO : YT_MU
 // ---------- utilità canvas ----------
 function mkCanvas(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
 function tex(c){ const t=new THREE.CanvasTexture(c); t.anisotropy=8; t.encoding=THREE.sRGBEncoding; return t; }
+// ---- RETINA del canestro: mesh deformabile con cordoni spessi ----
+let reteNet=null, reteBase=null, reteCur=null, reteTopY=0, reteBotY=0;
+// texture a rombi: due diagonali che, ripetute, formano la maglia della rete.
+// lineWidth alto = cordone spesso e ben visibile.
+function texNet(){
+  const c=mkCanvas(96,96), g=c.getContext('2d');
+  g.clearRect(0,0,96,96);
+  g.strokeStyle='rgba(248,248,248,0.97)'; g.lineWidth=10; g.lineCap='round';
+  g.beginPath();
+  g.moveTo(0,0);  g.lineTo(96,96);
+  g.moveTo(96,0); g.lineTo(0,96);
+  g.stroke();
+  const t=tex(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(11,4);
+  return t;
+}
+// deforma la rete: i vertici vicini alla palla si gonfiano in fuori e scendono,
+// poi rientrano con effetto molla. Il bordo alto (attaccato al ferro) resta fermo.
+function aggiornaRete(dt){
+  if(!reteNet||!reteBase) return;
+  const pos=reteNet.geometry.attributes.position, n=pos.count;
+  const plx=palla.position.x-reteNet.position.x,
+        ply=palla.position.y-reteNet.position.y,
+        plz=palla.position.z-reteNet.position.z;
+  const attiva=G.volo && palla.visible, hTot=(reteTopY-reteBotY)||1;
+  const k=Math.min(1,dt*16), R=.28;
+  for(let i=0;i<n;i++){
+    const bx=reteBase[i*3], by=reteBase[i*3+1], bz=reteBase[i*3+2];
+    let tx=bx, ty=by, tz=bz;
+    if(attiva){
+      const dx=bx-plx, dy=by-ply, dz=bz-plz, d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(d<R){
+        const w=Math.max(0,(reteTopY-by)/hTot);      // 0 in alto, 1 in basso
+        const f=(R-d)/R*w, rr=Math.hypot(bx,bz)||1e-3;
+        tx=bx+(bx/rr)*f*.14; tz=bz+(bz/rr)*f*.14; ty=by-f*.13;
+      }
+    }
+    const cx=reteCur[i*3], cy=reteCur[i*3+1], cz=reteCur[i*3+2];
+    reteCur[i*3]=cx+(tx-cx)*k; reteCur[i*3+1]=cy+(ty-cy)*k; reteCur[i*3+2]=cz+(tz-cz)*k;
+    pos.setXYZ(i, reteCur[i*3], reteCur[i*3+1], reteCur[i*3+2]);
+  }
+  pos.needsUpdate=true;
+}
 function rRect(g,x,y,w,h,r){
   g.beginPath();
   g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
@@ -691,9 +733,15 @@ const matTV=new THREE.MeshBasicMaterial({map:texQuadro()});
   const braccio=new THREE.Mesh(new THREE.BoxGeometry(.11,.03,.055),
     new THREE.MeshStandardMaterial({color:0xd8342a,roughness:.5}));
   braccio.position.set(-5.1,2.05,-3.262); scene.add(braccio);
-  const retina=new THREE.Mesh(new THREE.CylinderGeometry(.19,.1,.3,12,4,true),
-    new THREE.MeshStandardMaterial({color:0xf2f2f2,wireframe:true}));
-  retina.position.set(-5.1,1.9,-3.05); scene.add(retina);
+  // retina a maglia con cordoni spessi (texture a rombi) e deformabile in volo
+  const geoRete=new THREE.CylinderGeometry(.19,.085,.36,14,10,true);
+  reteNet=new THREE.Mesh(geoRete, new THREE.MeshStandardMaterial({
+    map:texNet(), transparent:true, alphaTest:.45, side:THREE.DoubleSide,
+    roughness:.85, metalness:0, depthWrite:true}));
+  reteNet.position.set(-5.1,1.87,-3.05); scene.add(reteNet);
+  reteBase=Float32Array.from(geoRete.attributes.position.array);
+  reteCur=Float32Array.from(reteBase);
+  reteTopY=.18; reteBotY=-.18;                        // estremi locali (height .36)
   // poster aquila a destra della lavagna
   const aq=new THREE.Mesh(new THREE.PlaneGeometry(.8,1.6),
     new THREE.MeshBasicMaterial({map:texPosterAquila()}));
@@ -1874,6 +1922,7 @@ function animate(){
     aggiornaHud();
   } else { braccia.visible=false; preview.visible=false; mira3D.visible=false; }
   if(G.volo) fisicaPalla(Math.min(clock.getDelta ? dt : dt, .05));
+  aggiornaRete(dt);                                   // la rete ondeggia al passaggio della palla
   renderer.render(scene,camera);
 }
 animate();
