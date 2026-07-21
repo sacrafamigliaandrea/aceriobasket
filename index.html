@@ -1546,13 +1546,13 @@ function mostraGaraLive(giocatori){
 }
 function avviaLive(){
   if(liveTimer) clearInterval(liveTimer);
-  inviaHeartbeat(); caricaAttivi();
-  liveTimer=setInterval(()=>{ inviaHeartbeat(); caricaAttivi(); },4000);
+  // mando il mio battito (così gli altri mi vedono) e aggiorno la classifica a punti,
+  // che ora resta SEMPRE visibile e annota chi è in gara con la sua tappa.
+  inviaHeartbeat(); caricaClassifica();
+  liveTimer=setInterval(()=>{ inviaHeartbeat(); caricaClassifica(); },4000);
 }
 function fermaLive(){
   if(liveTimer){ clearInterval(liveTimer); liveTimer=null; }
-  // torna alla classifica dei punteggi
-  $('classifica').querySelector('h2').textContent='Classifica';
   caricaClassifica();
 }
 // se chiudi/abbandoni, esci dalla gara
@@ -1574,20 +1574,32 @@ function tornaAlMenu(){
   $('avvio').style.display='flex';
 }
 $('btnEsci').addEventListener('click',tornaAlMenu);
-function mostraClassifica(righe){
-  const top=righe.slice().sort((a,b)=>b.p-a.p).slice(0,10);
+function mostraClassifica(righe,live){
+  const h2=$('classifica').querySelector('h2'); if(h2) h2.textContent='Classifica';
+  const top=righe.slice().sort((a,b)=>b.p-a.p).slice(0,12);
+  const tot=STAZIONI.length, pulisci=s=>String(s).replace(/[<>&]/g,'');
+  const liveMap={}; (live||[]).forEach(g=>{ if(g&&g.n!=null) liveMap[pulisci(g.n)]=g.tappa; });
+  const mio=pulisci((G.nome||'').trim());
   $('listaClass').innerHTML=top.length
-    ? top.map((r,i)=>'<li><span>'+(i+1)+'. '+String(r.n).replace(/[<>&]/g,'')+'</span><b>'+r.p+'</b></li>').join('')
-    : '<li>ancora nessun punteggio</li>';
-  $('notaClass').textContent=URL_CLASSIFICA?'condivisa · si aggiorna da sola':'classifica locale (configura Apps Script per condividerla)';
+    ? top.map((r,i)=>{
+        const nm=pulisci(r.n);
+        const gara=(liveMap[nm]!=null)?' · Tappa '+Math.min(liveMap[nm],tot)+'/'+tot:'';
+        const io=(mio&&nm===mio)?' style="color:var(--arancio-chiaro)"':'';
+        return '<li'+io+'><span>'+(i+1)+'. '+nm+gara+'</span><b>'+r.p+'</b></li>';
+      }).join('')
+    : '<li>ancora nessun punteggio oggi</li>';
+  $('notaClass').textContent=URL_CLASSIFICA?'condivisa · si azzera a mezzanotte':'classifica locale (configura Apps Script per condividerla)';
 }
 async function caricaClassifica(){
-  if(G.modo==='percorso' && liveTimer) return;   // durante la gara mostra i live
   if(!URL_CLASSIFICA){ mostraClassifica(classificaLocale()); return; }
   try{
     const r=await fetch(URL_CLASSIFICA+'?action=top',{cache:'no-store'});
     const dati=await r.json();
-    mostraClassifica(dati.map(d=>({n:d.n,p:d.p})));
+    let live=[];
+    if(G.gioco && G.modo==='percorso'){          // in gara annota le tappe degli avversari
+      try{ const ra=await fetch(URL_CLASSIFICA+'?action=attivi',{cache:'no-store'}); live=await ra.json(); }catch(e){}
+    }
+    mostraClassifica(dati.map(d=>({n:d.n,p:d.p})),live);
   }catch(e){ $('notaClass').textContent='classifica non raggiungibile'; }
 }
 setInterval(caricaClassifica,20000);
@@ -1833,6 +1845,7 @@ function fisicaPalla(dt){
     } else {
       G.punti+=G.valeTiro;
       splash('CANESTRO! +'+G.valeTiro,'#ffb35c');
+      segnaPunteggio(G.nome,G.punti);            // invio SUBITO: così ti vedi in classifica durante la partita
     }
     aggiornaHud(); suonoCanestro(); suonoRete();
   }
