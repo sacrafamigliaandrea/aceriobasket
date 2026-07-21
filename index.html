@@ -26,6 +26,15 @@
     border-bottom:1px solid rgba(255,255,255,.07)}
   #classifica li b{color:#ffd28a;font-weight:700}
   #classifica .nota{font-size:9.5px;opacity:.55;margin-top:6px}
+  #sfidaCase{position:fixed;top:150px;right:18px;width:230px;padding:12px 14px}
+  #sfidaCase h2{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#ffb35c;margin-bottom:9px}
+  #sfidaCase .rigaCasa{margin-bottom:8px}
+  #sfidaCase .top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px}
+  #sfidaCase .top .nm{display:flex;align-items:center;gap:6px}
+  #sfidaCase .top .nm i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  #sfidaCase .top b{font-weight:700;color:#ffd28a}
+  #sfidaCase .barra{height:7px;border-radius:5px;background:rgba(255,255,255,.10);overflow:hidden}
+  #sfidaCase .barra i{display:block;height:100%;width:0%;border-radius:5px;transition:width .4s}
   #mirino{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
     width:18px;height:18px;pointer-events:none}
   #mirino::before,#mirino::after{content:'';position:absolute;background:rgba(255,255,255,.85)}
@@ -36,8 +45,10 @@
     background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);display:none}
   #barraPot i{display:block;height:100%;width:0%;
     background:linear-gradient(90deg,#ffd28a,#f5a742,#e8641e)}
-  #istruzioni{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
-    padding:9px 18px;font-size:12px;text-align:center;opacity:.92}
+  #istruzioni{position:fixed;bottom:16px;left:18px;
+    padding:11px 15px;font-size:12px;text-align:left;opacity:.92;line-height:1.75;max-width:340px}
+  #istruzioni b{color:var(--arancio-chiaro)}
+  #istruzioni div{white-space:nowrap}
   #splash{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%) scale(.8);
     font-size:44px;font-weight:900;color:#ffd28a;text-shadow:0 4px 24px rgba(0,0,0,.5);
     opacity:0;pointer-events:none;transition:all .3s}
@@ -55,6 +66,19 @@
     box-shadow:0 8px 30px rgba(232,100,30,.45)}
   .overlay button:hover{transform:scale(1.04)}
   .overlay .punti-finali{font-size:56px;font-weight:900;color:#ffd28a}
+  .etichetta-casa{font-size:12px;opacity:.75;margin-top:18px;margin-bottom:8px}
+  .case{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+  .overlay .casa-btn{margin:0;padding:9px 14px;border-radius:11px;border:2px solid rgba(255,255,255,.18);
+    background:#241a12;color:#fff;font-size:13px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;gap:7px;transition:all .15s;box-shadow:none}
+  .overlay .casa-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.4)}
+  .overlay .casa-btn .pallino{width:13px;height:13px;border-radius:50%;flex:none}
+  .overlay .casa-btn.sel{border-color:#fff;background:#4a3520}
+  .casa-avviso{color:#ffb35c;font-size:12px;min-height:16px;margin-top:8px}
+  .modi{display:flex;gap:14px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+  .modo-btn{margin:0;display:flex;flex-direction:column;gap:3px;align-items:center;
+    min-width:190px;padding:15px 20px;line-height:1.2}
+  .modo-btn small{font-size:11.5px;font-weight:400;opacity:.85}
   .palla-logo{display:block;margin:0 auto 14px;filter:drop-shadow(0 8px 22px rgba(232,100,30,.5));
     animation:rimbalzo 1.6s ease-in-out infinite}
   @keyframes rimbalzo{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
@@ -66,6 +90,18 @@
     display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)}
   #btnMusica.off{opacity:.6}
   #btnMusica svg{width:14px;height:14px;fill:#fff}
+  #btnInfo{position:fixed;bottom:16px;right:130px;z-index:12;width:34px;height:34px;
+    border-radius:50%;background:var(--panel);color:#fff;border:1px solid rgba(255,255,255,.18);
+    font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:17px;cursor:pointer;
+    backdrop-filter:blur(6px)}
+  #btnInfo:hover{background:var(--arancio);border-color:var(--arancio)}
+  #regole{display:none}
+  .regole-box{max-width:560px;text-align:left}
+  .regole-box h2{text-align:center;margin-bottom:14px}
+  .regole-testo{max-height:56vh;overflow-y:auto;padding-right:8px}
+  .regole-testo p{font-size:13.5px;line-height:1.6;opacity:.92;margin:0 0 12px}
+  .regole-testo b{color:var(--arancio-chiaro);font-weight:700}
+  .regole-box #btnChiudiRegole{display:block;margin:16px auto 0}
 </style>
 </head>
 <body>
@@ -81,11 +117,37 @@
   <h2>Classifica</h2><ol id="listaClass"><li>caricamento…</li></ol>
   <div class="nota" id="notaClass"></div>
 </div>
+<div id="sfidaCase" class="pann">
+  <h2>Sfida tra Case</h2>
+  <div id="listaCase"></div>
+</div>
 <div id="mirino"></div>
 <div id="barraPot"><i id="barraPotFill"></i></div>
-<div id="istruzioni" class="pann"><b>Click</b> per mirare · <b>frecce ← ↑ ↓ →</b> muoviti · <b>tieni premuta la BARRA SPAZIO</b> e rilascia per tirare · più sei lontano, più vale il canestro</div>
+<div id="istruzioni" class="pann">
+  <div><b>Click</b> — blocca il mouse per mirare</div>
+  <div><b>Frecce ← ↑ ↓ →</b> — muoviti nell'aula</div>
+  <div><b>Barra spazio</b> — tieni premuto: potenza, rilascia: tiro</div>
+  <div><b>Mira più in alto</b> — alzi l'arco · la scia ti guida</div>
+</div>
 <div id="splash"></div>
 <button id="btnMusica"><svg viewBox="0 0 16 16"><path d="M6 2v8.2a2.5 2.5 0 1 0 1.5 2.3V5.5l6-1.5v5.2a2.5 2.5 0 1 0 1.5 2.3V2z"/></svg><span>Musica</span></button>
+<button id="btnInfo" title="Come si gioca">i</button>
+
+<div class="overlay" id="regole">
+  <div class="box regole-box">
+    <h2>Come si <span>gioca</span></h2>
+    <div class="regole-testo">
+      <p><b>Obiettivo.</b> Fare canestro nel mini canestro sopra la lavagna del laboratorio.</p>
+      <p><b>Comandi.</b> <b>Click</b> per bloccare il mouse e mirare · <b>frecce ← ↑ ↓ →</b> per muoverti (solo nei Tiri liberi) · <b>barra spazio</b>: tienila premuta per caricare la potenza e rilasciala per tirare.</p>
+      <p><b>L'arco del tiro.</b> Mira più in alto per alzare la parabola, più in basso per un tiro teso. La <b>scia arancione</b> mostra dove cadrà la palla: aggiustala finché entra nel canestro. Da vicino serve un arco alto, da lontano più potenza.</p>
+      <p><b>Tiri liberi.</b> Hai <b>8 tiri</b> e giri per l'aula: tira da dove vuoi. Più sei lontano, più vale il canestro (da <b>1 a 5 punti</b>).</p>
+      <p><b>Percorso a tappe.</b> <b>8 postazioni fisse</b> a difficoltà crescente. I <b>tentativi sono infiniti</b>: superi la tappa <b>solo facendo canestro</b>. Attenzione: il valore del canestro (<b>Vale</b>) <b>parte alto e scende a ogni tiro</b> — quindi <b>meno tiri fai, più punti prendi</b>.</p>
+      <p><b>Le Case.</b> Scegli la tua squadra — <span style="color:#2b5aa8">Aquila Blu</span>, <span style="color:#e8b62a">Cero Giallo</span>, <span style="color:#2f8a5b">Quercia Verde</span>, <span style="color:#c0392b">Tasso Rosso</span> — e i tuoi punti si <b>sommano al totale della Casa</b> nella "Sfida tra Case".</p>
+      <p><b>Classifica.</b> È condivisa: i punteggi di tutti compaiono in tempo reale. Il pulsante <b>Musica</b> accende o spegne la colonna sonora.</p>
+    </div>
+    <button id="btnChiudiRegole">Ho capito, gioco!</button>
+  </div>
+</div>
 
 
 <div class="overlay" id="avvio">
@@ -101,11 +163,16 @@
       </g>
     </svg>
     <h2>Canestro <span>in Laboratorio</span></h2>
-    <p>Otto tiri nel canestro sopra la lavagna. Muoviti per l'aula e tira
-       da dove vuoi: più sei lontano, più vale il canestro (da 1 a 5).
-       La classifica è condivisa con tutta la scuola!</p>
+    <p>Scegli come giocare. Gestisci l'arco del tiro: mira più in alto per
+       alzare la parabola, tieni premuta la barra spazio per la potenza.</p>
     <input id="nome" maxlength="16" placeholder="Il tuo soprannome" autocomplete="off">
-    <br><button id="btnGioca">Gioca</button>
+    <div class="etichetta-casa">Scegli la tua Casa — i tuoi punti si sommano alla squadra</div>
+    <div class="case" id="scelteCasa"></div>
+    <div class="modi">
+      <button id="btnGioca" class="modo-btn"><b>Tiri liberi</b><small>8 tiri, da dove vuoi</small></button>
+      <button id="btnPercorso" class="modo-btn"><b>Percorso a tappe</b><small>8 postazioni, difficoltà crescente</small></button>
+    </div>
+    <div class="casa-avviso" id="casaAvviso"></div>
   </div>
 </div>
 <div class="overlay" id="fine">
@@ -131,7 +198,11 @@
    Se URL_CLASSIFICA resta vuoto, la classifica è solo locale.
    ============================================================ */
 const URL_CLASSIFICA='https://script.google.com/macros/s/AKfycbz9ynWIfVZIdXKfHbl-EjclvvCI7hSuVTni-MITa66OztqHZWyblPxFlNf_xlb9mwniTg/exec';
-const YT_MUSICA='8L6EsFXh2O8';   // musica di sottofondo (YouTube video id)
+// musica di sottofondo (YouTube video id), diversa per modalità
+const YT_MUSICA_LIBERA='8L6EsFXh2O8';
+const YT_MUSICA_PERCORSO='nendMLrpI-s';
+const YT_MUSICA=YT_MUSICA_LIBERA;   // brano iniziale del player
+function branoPerModo(){ return G.modo==='percorso' ? YT_MUSICA_PERCORSO : YT_MUSICA_LIBERA; }
 
 
 // ---------- utilità canvas ----------
@@ -989,6 +1060,34 @@ const CANESTRO=new THREE.Vector3(-5.1,2.05,-3.15);
 const R_ANELLO=.19, R_PALLA=.075;
 const TIRI_TOT=8;
 
+// ---- MODALITÀ PERCORSO: 8 postazioni a difficoltà crescente ----
+// posizioni (x,z) su pavimento libero, in ordine di sfida.
+// Tentativi infiniti: si supera la tappa solo facendo canestro.
+// Il valore del canestro parte da un massimo (cresce con la difficoltà) e
+// scende a ogni tiro mancato: meno tiri fai, più punti prendi.
+const CALO_TIRO=3, PUNTI_MIN=3;
+const STAZIONI=[
+  {x:-5.1, z:-1.7, t:'Sotto canestro'},
+  {x:-3.1, z:-2.1, t:'Dal lato destro'},
+  {x:-7.0, z:-2.1, t:'Dal lato sinistro'},
+  {x:-1.2, z:-2.4, t:'In diagonale'},
+  {x: 0.8, z:-1.9, t:'Dal corridoio'},
+  {x:-5.1, z: 2.0, t:'Dietro i tavoli'},
+  {x: 2.8, z:-2.3, t:'Angolo lungo'},
+  {x: 0.0, z: 2.7, t:'Tiro da tre'}
+];
+function baseTappa(i){ return 12+i*3; }               // valore massimo della tappa (difficoltà)
+function valoreCanestro(i,tiriGiaFatti){ return Math.max(PUNTI_MIN, baseTappa(i)-tiriGiaFatti*CALO_TIRO); }
+
+// ---- LE QUATTRO CASE (squadre fisse): i punti dei giocatori si sommano ----
+const CASE=[
+  {id:'AquilaBlu',   nome:'Aquila Blu',   col:'#2b5aa8'},
+  {id:'CeroGiallo',  nome:'Cero Giallo',  col:'#e8b62a'},
+  {id:'QuerciaVerde',nome:'Quercia Verde',col:'#2f8a5b'},
+  {id:'TassoRosso',  nome:'Tasso Rosso',  col:'#c0392b'}
+];
+function casaById(id){ return CASE.find(c=>c.id===id); }
+
 // palla da basket (texture a spicchi)
 const palla=(()=>{
   const c=mkCanvas(128,64), g=c.getContext('2d');
@@ -1040,6 +1139,66 @@ braccia.add(pallaMano);
 braccia.position.set(0,0,0);
 camera.add(braccia);
 
+// ---------- ANTEPRIMA DELLA TRAIETTORIA (guida per gestire la parabola) ----------
+// una scia di puntini che simula la stessa fisica del tiro con la mira e la
+// potenza correnti: si aggiorna in tempo reale mentre miri e carichi
+const N_PREV=46;
+const previewGeo=new THREE.BufferGeometry();
+previewGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N_PREV*3),3));
+const preview=new THREE.Points(previewGeo,
+  new THREE.PointsMaterial({color:0xffb35c,size:.07,sizeAttenuation:true,
+    transparent:true,opacity:.9,depthWrite:false}));
+preview.frustumCulled=false; preview.visible=false; scene.add(preview);
+// pallina bersaglio in fondo alla traiettoria (dove cadrebbe la palla)
+const mira3D=new THREE.Mesh(new THREE.SphereGeometry(.05,12,10),
+  new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:.85}));
+mira3D.visible=false; scene.add(mira3D);
+function aggiornaAnteprima(){
+  const dir=dirSguardo();
+  const v0=velocitaTiro(G.potenza);
+  const p=puntoLancio(dir), v=dir.clone().multiplyScalar(v0);
+  const pos=previewGeo.attributes.position.array;
+  const step=.045; let n=0;
+  for(let i=0;i<N_PREV;i++){
+    pos[n++]=p.x; pos[n++]=p.y; pos[n++]=p.z;
+    v.y-=9.81*step; p.addScaledVector(v,step);
+    // fermati alla prima collisione (pavimento, pareti, parete del canestro)
+    if(p.y<R_PALLA || p.z<-3.24 || Math.abs(p.x)>7.88){ break; }
+  }
+  const count=n/3;
+  previewGeo.setDrawRange(0,count);
+  previewGeo.attributes.position.needsUpdate=true;
+  mira3D.position.set(pos[(count-1)*3],Math.max(pos[(count-1)*3+1],R_PALLA),pos[(count-1)*3+2]);
+}
+
+// ---------- MARCATORI DELLE POSTAZIONI (modalità Percorso) ----------
+// un disco numerato e pulsante sul pavimento di ogni tappa
+const markerTappe=new THREE.Group(); markerTappe.visible=false; scene.add(markerTappe);
+STAZIONI.forEach((s,i)=>{
+  const g=new THREE.Group();
+  const anello=new THREE.Mesh(new THREE.RingGeometry(.30,.40,28),
+    new THREE.MeshBasicMaterial({color:0xffb35c,transparent:true,opacity:.9,side:THREE.DoubleSide}));
+  anello.rotation.x=-Math.PI/2; g.add(anello);
+  const nc=mkCanvas(128,128), ng=nc.getContext('2d');
+  ng.beginPath(); ng.arc(64,64,60,0,7); ng.fillStyle='rgba(232,100,30,.92)'; ng.fill();
+  ng.fillStyle='#fff'; ng.font='bold 74px Arial'; ng.textAlign='center'; ng.textBaseline='middle';
+  ng.fillText(String(i+1),64,70);
+  const disco=new THREE.Mesh(new THREE.CircleGeometry(.24,24),
+    new THREE.MeshBasicMaterial({map:tex(nc),transparent:true}));
+  disco.rotation.x=-Math.PI/2; disco.position.y=.005; g.add(disco);
+  g.position.set(s.x,.03,s.z); g.userData.base=1;
+  markerTappe.add(g);
+});
+function pulsaMarker(t){
+  markerTappe.children.forEach((g,i)=>{
+    const s=1+Math.sin(t*3+i*.7)*.10;
+    g.scale.set(s,1,s);
+    // la tappa corrente pulsa più viva
+    const attiva=(G.modo==='percorso' && i===G.tappa);
+    g.children[0].material.opacity=attiva?1:.55;
+  });
+}
+
 // suoni: piccolo sintetizzatore WebAudio (nessuna dipendenza)
 let audioCtx=null;
 function suona(freq,dur,tipo,vol){
@@ -1063,21 +1222,37 @@ function suonoCanestro(){
 }
 
 // ---------- musica di sottofondo (YouTube, player nascosto) ----------
-let ytPlayer=null, ytPronto=false, musicaVoluta=false;
+let ytPlayer=null, ytPronto=false, musicaVoluta=false, branoCorrente=YT_MUSICA;
 window.onYouTubeIframeAPIReady=function(){
   if(!YT_MUSICA) return;
   ytPlayer=new YT.Player('yt',{
     videoId:YT_MUSICA,
-    playerVars:{rel:0,playsinline:1,enablejsapi:1,loop:1,playlist:YT_MUSICA,controls:0,disablekb:1,fs:0,autoplay:0},
+    playerVars:{rel:0,playsinline:1,enablejsapi:1,controls:0,disablekb:1,fs:0,autoplay:0},
     events:{ onReady:()=>{ ytPronto=true; if(musicaVoluta) avviaMusica(); },
-             onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED && ytPlayer) ytPlayer.playVideo(); } }
+             onStateChange:e=>{
+               if(!ytPlayer) return;
+               if(e.data===YT.PlayerState.ENDED) ytPlayer.playVideo();   // loop
+               // se il brano è caricato/in coda ma fermo, e la musica è voluta, parti
+               if((e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.PAUSED)
+                  && musicaOn && musicaVoluta){ try{ ytPlayer.playVideo(); }catch(_){} }
+             } }
   });
 };
 let musicaOn=true;                       // stato del pulsante on/off
 function avviaMusica(){
   musicaVoluta=true;
   if(!musicaOn||!ytPronto||!ytPlayer) return;
-  try{ ytPlayer.setVolume(28); ytPlayer.unMute(); ytPlayer.playVideo(); }catch(e){}
+  const brano=branoPerModo();
+  try{
+    ytPlayer.setVolume(28); ytPlayer.unMute();
+    if(brano!==branoCorrente){            // cambia colonna sonora con la modalità
+      branoCorrente=brano;
+      ytPlayer.loadVideoById(brano);      // carica e avvia il nuovo brano
+      setTimeout(()=>{ try{ if(musicaOn&&musicaVoluta) ytPlayer.playVideo(); }catch(_){} },600);
+    } else {
+      ytPlayer.playVideo();
+    }
+  }catch(e){}
 }
 // pulsante Musica on/off
 (function(){
@@ -1098,7 +1273,10 @@ function avviaMusica(){
 const G={
   nome:'', punti:0, tiri:TIRI_TOT, inCarica:false, potenza:0,
   volo:false, vel:new THREE.Vector3(), vivoDa:0, segnato:false,
-  yPrec:0, gioco:false
+  yPrec:0, gioco:false,
+  modo:'libera', tappa:0, tiriStazione:0, tappaFatta:false,   // stato modalità Percorso
+  casa:'',                                                 // Casa scelta (squadra)
+  introVolo:false, introT:0, introDur:5.2, introDone:null  // volo iniziale del percorso
 };
 const $=id=>document.getElementById(id);
 
@@ -1110,10 +1288,11 @@ addEventListener('keydown',e=>{
   tasti[e.key.toLowerCase()]=true;
   // le frecce muovono: evita lo scroll della pagina
   if(G.gioco && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-  // BARRA SPAZIO: tieni premuto per caricare il tiro (solo se sbloccato dalla domanda)
+  // BARRA SPAZIO: tieni premuto per caricare il tiro
   if(e.code==='Space'||e.key===' '){
     e.preventDefault();
-    if(G.gioco && !G.volo && G.tiri>0 && !G.inCarica){
+    const colpiDisp = G.modo==='percorso' ? !G.tappaFatta : G.tiri>0;
+    if(G.gioco && !G.introVolo && !G.volo && colpiDisp && !G.inCarica){
       G.inCarica=true; G.potenza=0; $('barraPot').style.display='block';
       suona(200,.05,'square',.06);
     }
@@ -1144,18 +1323,26 @@ function dirSguardo(){
 // punteggio in base alla distanza dal canestro al momento del tiro
 function puntiPerDistanza(d){ return d<2?1 : d<4?2 : d<6?3 : d<8?4 : 5; }
 
+// velocità di lancio in funzione del caricamento (m/s)
+function velocitaTiro(pot){ return 4.4+pot*8.6; }
+// punto di partenza della palla (davanti-basso alla camera)
+function puntoLancio(dir){
+  return camera.position.clone().addScaledVector(dir,.4).setY(camera.position.y-.10);
+}
 function tira(){
   const dir=dirSguardo();
-  const v0=5.2+G.potenza*8.5;
-  palla.position.copy(camera.position).addScaledVector(dir,.4);
-  palla.position.y-=.12;
+  const v0=velocitaTiro(G.potenza);
+  palla.position.copy(puntoLancio(dir));
+  // TIRO PARABOLICO PURO: la velocità segue esattamente la direzione dello
+  // sguardo. Miri in alto → arco alto (per i tiri ravvicinati); miri teso →
+  // parabola lunga (per i tiri da lontano). Nessun aiuto forzato all'insù.
   G.vel.copy(dir).multiplyScalar(v0);
-  G.vel.y+=1.2;                          // aiutino ad arco
   G.volo=true; G.vivoDa=0; G.segnato=false; G.yPrec=palla.position.y;
   G.distTiro=camera.position.distanceTo(CANESTRO);
   G.valeTiro=puntiPerDistanza(G.distTiro);
-  palla.visible=true;
-  G.tiri--; aggiornaHud();
+  palla.visible=true; preview.visible=false;
+  if(G.modo==='percorso') G.tiriStazione++; else G.tiri--;
+  aggiornaHud();
   suona(240,.08,'square',.1);
 }
 
@@ -1170,17 +1357,64 @@ function chiaveLocale(){ return 'canestro_classifica'; }
 function classificaLocale(){
   try{ return JSON.parse(localStorage.getItem(chiaveLocale())||'[]'); }catch(e){ return []; }
 }
-function segnaPunteggio(nome,punti){
+function segnaPunteggio(nome,punti,modo){
+  modo=modo||'libera';
+  const casa=G.casa||'';
   if(URL_CLASSIFICA){
     // pixel GET: funziona anche con CSP restrittive
-    new Image().src=URL_CLASSIFICA+'?'+new URLSearchParams({action:'segna',nome,punti});
+    new Image().src=URL_CLASSIFICA+'?'+new URLSearchParams({action:'segna',nome,punti,modo,casa});
     setTimeout(caricaClassifica,2500);
+    setTimeout(caricaCase,2600);
   } else {
-    const l=classificaLocale(); l.push({n:nome,p:punti});
+    const l=classificaLocale(); l.push({n:nome,p:punti,m:modo,c:casa});
     localStorage.setItem(chiaveLocale(),JSON.stringify(l));
-    mostraClassifica(l);
+    mostraClassifica(l); mostraCaseLocale();
   }
 }
+
+// ---------- GARA LIVE: chi sta giocando e a che tappa è ----------
+let liveTimer=null;
+function inviaHeartbeat(uscita){
+  if(!URL_CLASSIFICA || G.modo!=='percorso') return;
+  new Image().src=URL_CLASSIFICA+'?'+new URLSearchParams({
+    action:'heartbeat', sid:SID, nome:G.nome,
+    tappa:(uscita?0:G.tappa+1), modo:'percorso', esci:(uscita?1:0)
+  });
+}
+async function caricaAttivi(){
+  if(!URL_CLASSIFICA){ return; }
+  try{
+    const r=await fetch(URL_CLASSIFICA+'?action=attivi',{cache:'no-store'});
+    const dati=await r.json();
+    mostraGaraLive(dati);
+  }catch(e){}
+}
+function mostraGaraLive(giocatori){
+  const box=$('classifica');
+  box.querySelector('h2').textContent='In gara ora';
+  const tot=STAZIONI.length;
+  const righe=(giocatori||[]).filter(g=>g.tappa>=1).sort((a,b)=>b.tappa-a.tappa).slice(0,10);
+  $('listaClass').innerHTML=righe.length
+    ? righe.map(g=>{
+        const io=(g.sid===SID)?' style="color:var(--arancio-chiaro)"':'';
+        return '<li'+io+'><span>'+String(g.n).replace(/[<>&]/g,'')+'</span><b>Tappa '+Math.min(g.tappa,tot)+'/'+tot+'</b></li>';
+      }).join('')
+    : '<li>sei il primo in gara!</li>';
+  $('notaClass').textContent='aggiornata in tempo reale';
+}
+function avviaLive(){
+  if(liveTimer) clearInterval(liveTimer);
+  inviaHeartbeat(); caricaAttivi();
+  liveTimer=setInterval(()=>{ inviaHeartbeat(); caricaAttivi(); },4000);
+}
+function fermaLive(){
+  if(liveTimer){ clearInterval(liveTimer); liveTimer=null; }
+  // torna alla classifica dei punteggi
+  $('classifica').querySelector('h2').textContent='Classifica';
+  caricaClassifica();
+}
+// se chiudi/abbandoni, esci dalla gara
+addEventListener('pagehide',()=>{ try{ inviaHeartbeat(true); }catch(e){} });
 function mostraClassifica(righe){
   const top=righe.slice().sort((a,b)=>b.p-a.p).slice(0,10);
   $('listaClass').innerHTML=top.length
@@ -1189,6 +1423,7 @@ function mostraClassifica(righe){
   $('notaClass').textContent=URL_CLASSIFICA?'condivisa · si aggiorna da sola':'classifica locale (configura Apps Script per condividerla)';
 }
 async function caricaClassifica(){
+  if(G.modo==='percorso' && liveTimer) return;   // durante la gara mostra i live
   if(!URL_CLASSIFICA){ mostraClassifica(classificaLocale()); return; }
   try{
     const r=await fetch(URL_CLASSIFICA+'?action=top',{cache:'no-store'});
@@ -1199,27 +1434,173 @@ async function caricaClassifica(){
 setInterval(caricaClassifica,20000);
 caricaClassifica();
 
+// ---------- SFIDA TRA CASE: totali per squadra (cumulativi) ----------
+function impilaPannelli(){
+  const c=$('classifica').getBoundingClientRect();
+  $('sfidaCase').style.top=(c.bottom+12)+'px';
+}
+function mostraCase(totali){
+  const max=Math.max(1,...CASE.map(c=>totali[c.id]||0));
+  const ord=CASE.slice().sort((a,b)=>(totali[b.id]||0)-(totali[a.id]||0));
+  $('listaCase').innerHTML=ord.map(c=>{
+    const p=totali[c.id]||0, mia=(c.id===G.casa);
+    return '<div class="rigaCasa"><div class="top"><span class="nm">'
+      +'<i style="background:'+c.col+'"></i>'+c.nome+(mia?' ·':'')+'</span><b>'+p+'</b></div>'
+      +'<div class="barra"><i style="width:'+Math.round(p/max*100)+'%;background:'+c.col+'"></i></div></div>';
+  }).join('');
+  impilaPannelli();
+}
+function totaliCaseLocale(){
+  const t={}; CASE.forEach(c=>t[c.id]=0);
+  classificaLocale().forEach(r=>{ if(r.c && t[r.c]!==undefined) t[r.c]+=(+r.p||0); });
+  return t;
+}
+function mostraCaseLocale(){ mostraCase(totaliCaseLocale()); }
+async function caricaCase(){
+  if(!URL_CLASSIFICA){ mostraCaseLocale(); return; }
+  try{
+    const r=await fetch(URL_CLASSIFICA+'?action=case',{cache:'no-store'});
+    const dati=await r.json();          // {AquilaBlu:n, CeroGiallo:n, ...}
+    mostraCase(dati);
+  }catch(e){ impilaPannelli(); }
+}
+setInterval(caricaCase,15000);
+caricaCase();
+addEventListener('resize',impilaPannelli);
+
 // ---------- HUD ----------
 function aggiornaHud(){
   $('vPunti').textContent=G.punti;
-  $('vTiri').textContent=G.tiri;
   const d=camera.position.distanceTo(CANESTRO);
   $('vDist').textContent=d.toFixed(1)+' m';
-  $('vVale').textContent=puntiPerDistanza(d)+' pt';
+  if(G.modo==='percorso'){
+    $('vTiri').textContent=G.tiriStazione;
+    $('vTiri').nextElementSibling.textContent='Tiri qui';
+    $('vVale').textContent=valoreCanestro(G.tappa,G.tiriStazione)+' pt';
+    $('vVale').nextElementSibling.textContent='Vale';
+  } else {
+    $('vTiri').textContent=G.tiri;
+    $('vTiri').nextElementSibling.textContent='Tiri';
+    $('vVale').textContent=puntiPerDistanza(d)+' pt';
+    $('vVale').nextElementSibling.textContent='Vale';
+  }
 }
 
 // ---------- avvio / fine ----------
-$('nome').value=localStorage.getItem('canestro_nome')||'';
-$('btnGioca').onclick=()=>{
+// il nome vive solo per la sessione: alla chiusura del browser sparisce
+localStorage.removeItem('canestro_nome');   // ripulisci eventuali vecchi salvataggi persistenti
+$('nome').value=sessionStorage.getItem('canestro_nome')||'';
+// id di sessione anonimo per la gara live (anch'esso volatile)
+const SID=(()=>{ let s=sessionStorage.getItem('canestro_sid');
+  if(!s){ s='s'+Math.floor(performance.now()*1000).toString(36)+Math.round(performance.timeOrigin).toString(36); sessionStorage.setItem('canestro_sid',s); }
+  return s; })();
+
+// ---------- scelta della Casa (squadra) ----------
+G.casa=sessionStorage.getItem('canestro_casa')||'';
+(function(){
+  const cont=$('scelteCasa');
+  CASE.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='casa-btn'+(G.casa===c.id?' sel':'');
+    b.dataset.id=c.id;
+    b.innerHTML='<span class="pallino" style="background:'+c.col+'"></span>'+c.nome;
+    b.onclick=()=>{
+      G.casa=c.id; sessionStorage.setItem('canestro_casa',c.id);
+      [...cont.children].forEach(x=>x.classList.toggle('sel',x.dataset.id===c.id));
+      $('casaAvviso').textContent='';
+    };
+    cont.appendChild(b);
+  });
+})();
+// prima di iniziare serve una Casa
+function casaSceltaOk(){
+  if(G.casa) return true;
+  $('casaAvviso').textContent='Scegli prima la tua Casa!';
+  $('scelteCasa').animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:220});
+  return false;
+}
+
+function avviaLibera(){
+  if(!casaSceltaOk()) return;
   G.nome=($('nome').value.trim()||'Anonimo').slice(0,16);
-  localStorage.setItem('canestro_nome',G.nome);
+  sessionStorage.setItem('canestro_nome',G.nome);
+  G.modo='libera'; G.introVolo=false; markerTappe.visible=false;
   $('avvio').style.display='none';
   G.gioco=true; G.punti=0; G.tiri=TIRI_TOT; aggiornaHud();
   avviaMusica();
   canvasEl.requestPointerLock();
-};
+}
+$('btnGioca').onclick=avviaLibera;
+
+// ---------- MODALITÀ PERCORSO ----------
+function avviaPercorso(){
+  if(!casaSceltaOk()) return;
+  G.nome=($('nome').value.trim()||'Anonimo').slice(0,16);
+  sessionStorage.setItem('canestro_nome',G.nome);
+  G.modo='percorso';
+  $('avvio').style.display='none';
+  G.gioco=true; G.punti=0; G.tappa=0;
+  markerTappe.visible=true;
+  avviaMusica();
+  avviaLive();
+  canvasEl.requestPointerLock();          // blocco il mouse subito (gesto utente)
+  voloIntro(()=>posizionaStazione(0));    // volo che mostra le tappe, poi la 1ª
+}
+$('btnPercorso').onclick=avviaPercorso;
+
+// volo panoramico iniziale: mostra le postazioni e atterra sulla prima
+let introCurve=null, introTarget=null;
+function voloIntro(alTermine){
+  // percorso della telecamera: parte in alto dall'ingresso, sorvola le tappe,
+  // scende sulla prima postazione
+  const s0=STAZIONI[0];
+  introCurve=new THREE.CatmullRomCurve3([
+    new THREE.Vector3( 7.2, 2.8,  2.2),
+    new THREE.Vector3( 3.0, 2.6, -1.4),
+    new THREE.Vector3(-1.0, 2.3, -2.3),
+    new THREE.Vector3(-4.5, 2.5,  1.8),
+    new THREE.Vector3(-6.8, 2.0, -1.6),
+    new THREE.Vector3( s0.x, 1.5, s0.z)
+  ],false,'catmullrom',.5);
+  // sguardo: dai marcatori sul pavimento al canestro, per l'atterraggio
+  const dFin=CANESTRO.clone().sub(new THREE.Vector3(s0.x,1.5,s0.z));
+  const yaw0=Math.atan2(-dFin.x,-dFin.z), pit0=0.42;
+  const dir0=new THREE.Vector3(-Math.sin(yaw0)*Math.cos(pit0),Math.sin(pit0),-Math.cos(yaw0)*Math.cos(pit0));
+  introTarget={ inizio:new THREE.Vector3(-3,0.35,-1.2), fine:new THREE.Vector3(s0.x,1.5,s0.z).add(dir0.multiplyScalar(2)) };
+  G.introVolo=true; G.introT=0; G.introDur=5.2; G.introDone=alTermine;
+  preview.visible=false; mira3D.visible=false; braccia.visible=false;
+}
+
+function posizionaStazione(i){
+  G.tappa=i; G.tiriStazione=0; G.tappaFatta=false;
+  const s=STAZIONI[i];
+  camera.position.set(s.x,1.5,s.z);
+  // orienta verso il canestro (orizzontale) con un arco di partenza
+  const d=CANESTRO.clone().sub(camera.position);
+  yaw=Math.atan2(-d.x,-d.z); pitch=0.42;
+  camera.rotation.order='YXZ'; camera.rotation.set(pitch,yaw,0);
+  $('titolo').querySelector('p').textContent='Percorso · Tappa '+(i+1)+'/'+STAZIONI.length+' — '+s.t;
+  splash('Tappa '+(i+1)+': '+s.t,'#ffb35c');
+  inviaHeartbeat();
+  aggiornaHud();
+}
+function superaTappa(){
+  if(G.tappa+1>=STAZIONI.length){ finePercorso(); return; }
+  posizionaStazione(G.tappa+1);
+}
+function finePercorso(){
+  G.gioco=false; G.introVolo=false; markerTappe.visible=false; document.exitPointerLock();
+  $('titolo').querySelector('p').textContent='Sacra Famiglia — sfida a distanza';
+  $('fPunti').textContent=G.punti+' punti';
+  $('fMsg').textContent=G.nome+', percorso completato! Il tuo punteggio è in classifica.';
+  $('fine').style.display='flex';
+  segnaPunteggio(G.nome,G.punti,'percorso');
+  inviaHeartbeat(true);            // segnala uscita dalla gara
+  fermaLive();
+}
 $('btnAncora').onclick=()=>{
   $('fine').style.display='none';
+  if(G.modo==='percorso'){ avviaPercorso(); return; }
   G.punti=0; G.tiri=TIRI_TOT; G.gioco=true; aggiornaHud();
   avviaMusica();
   canvasEl.requestPointerLock();
@@ -1269,18 +1650,27 @@ function fisicaPalla(dt){
   // CANESTRO: attraversa il piano dell'anello scendendo, dentro il cerchio
   if(!G.segnato && G.yPrec>CANESTRO.y && p.y<=CANESTRO.y && dOr<R_ANELLO-.055 && G.vel.y<0){
     G.segnato=true;
-    G.punti+=G.valeTiro; aggiornaHud();
-    splash('CANESTRO! +'+G.valeTiro,'#ffb35c');
-    suonoCanestro();
+    if(G.modo==='percorso'){
+      const pt=valoreCanestro(G.tappa,G.tiriStazione-1); G.punti+=pt; G.tappaFatta=true;
+      splash('Tappa superata! +'+pt,'#ffb35c');
+    } else {
+      G.punti+=G.valeTiro;
+      splash('CANESTRO! +'+G.valeTiro,'#ffb35c');
+    }
+    aggiornaHud(); suonoCanestro();
   }
   G.yPrec=p.y;
   // fine del tiro
   const fermo=G.vel.length()<.4 && p.y<=R_PALLA+.01;
   if(G.vivoDa>6||fermo){
     G.volo=false; palla.visible=false;
-    if(!G.segnato) splash('Ritenta!','#f5c518');
-    // prossimo turno: nuova domanda, oppure fine partita
-    if(G.tiri<=0) setTimeout(finePartita,900);
+    if(G.modo==='percorso'){
+      if(G.tappaFatta) setTimeout(superaTappa,1000);            // segnato: avanza
+      else splash('Ritenta!','#f5c518');                        // tentativi infiniti: resti qui
+    } else {
+      if(!G.segnato) splash('Ritenta!','#f5c518');
+      if(G.tiri<=0) setTimeout(finePartita,900);
+    }
   }
 }
 
@@ -1289,25 +1679,43 @@ const clock=new THREE.Clock();
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);
+  if(markerTappe.visible) pulsaMarker(clock.elapsedTime);
+  // VOLO INIZIALE del Percorso: la telecamera sorvola le tappe e atterra
+  if(G.introVolo){
+    G.introT=Math.min(1,G.introT+dt/G.introDur);
+    const e=G.introT<.5?2*G.introT*G.introT:1-Math.pow(-2*G.introT+2,2)/2;  // easeInOut
+    camera.position.copy(introCurve.getPoint(e));
+    const look=introTarget.inizio.clone().lerp(introTarget.fine,Math.min(1,e*1.15));
+    camera.lookAt(look);
+    if(G.introT>=1){
+      G.introVolo=false;
+      if(G.introDone) G.introDone();
+    }
+    renderer.render(scene,camera);
+    return;
+  }
   if(G.gioco){
     // movimento
     camera.rotation.order='YXZ'; camera.rotation.set(pitch,yaw,0);
-    const v=(tasti['shift']?4.6:2.6)*dt;
-    const dir=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
-    const destra=new THREE.Vector3(-dir.z,0,dir.x);
-    const nuova=camera.position.clone();
-    if(tasti['arrowup']) nuova.addScaledVector(dir,v);
-    if(tasti['arrowdown']) nuova.addScaledVector(dir,-v);
-    if(tasti['arrowleft']) nuova.addScaledVector(destra,-v);
-    if(tasti['arrowright']) nuova.addScaledVector(destra,v);
-    nuova.x=Math.max(-7.5,Math.min(7.5,nuova.x));
-    nuova.z=Math.max(-2.95,Math.min(2.95,nuova.z));
-    if(!dentroTavolo(nuova.x,nuova.z)) camera.position.copy(nuova);
-    else { const solo=camera.position.clone(); solo.x=nuova.x;
-      if(!dentroTavolo(solo.x,solo.z)) camera.position.x=nuova.x;
-      else { solo.x=camera.position.x; solo.z=nuova.z;
-        if(!dentroTavolo(solo.x,solo.z)) camera.position.z=nuova.z; } }
-    camera.position.y=1.5;
+    // nel Percorso resti fermo alla postazione: ci si muove solo nei tiri liberi
+    if(G.modo!=='percorso'){
+      const v=(tasti['shift']?4.6:2.6)*dt;
+      const dir=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+      const destra=new THREE.Vector3(-dir.z,0,dir.x);
+      const nuova=camera.position.clone();
+      if(tasti['arrowup']) nuova.addScaledVector(dir,v);
+      if(tasti['arrowdown']) nuova.addScaledVector(dir,-v);
+      if(tasti['arrowleft']) nuova.addScaledVector(destra,-v);
+      if(tasti['arrowright']) nuova.addScaledVector(destra,v);
+      nuova.x=Math.max(-7.5,Math.min(7.5,nuova.x));
+      nuova.z=Math.max(-2.95,Math.min(2.95,nuova.z));
+      if(!dentroTavolo(nuova.x,nuova.z)) camera.position.copy(nuova);
+      else { const solo=camera.position.clone(); solo.x=nuova.x;
+        if(!dentroTavolo(solo.x,solo.z)) camera.position.x=nuova.x;
+        else { solo.x=camera.position.x; solo.z=nuova.z;
+          if(!dentroTavolo(solo.x,solo.z)) camera.position.z=nuova.z; } }
+      camera.position.y=1.5;
+    }
     // carica del tiro
     if(G.inCarica){
       G.potenza=Math.min(1,G.potenza+dt*.85);
@@ -1320,12 +1728,24 @@ function animate(){
     const car=G.inCarica?G.potenza:0;
     braccia.position.y=car*.05;
     pallaMano.position.set(0,-.32+car*.12,-.5+car*.06);
+    // anteprima traiettoria: visibile quando puoi tirare (non in volo)
+    const mostraGuida=!G.volo && G.tiri>0;
+    preview.visible=mostraGuida; mira3D.visible=mostraGuida;
+    if(mostraGuida) aggiornaAnteprima();
     aggiornaHud();
-  } else braccia.visible=false;
+  } else { braccia.visible=false; preview.visible=false; mira3D.visible=false; }
   if(G.volo) fisicaPalla(Math.min(clock.getDelta ? dt : dt, .05));
   renderer.render(scene,camera);
 }
 animate();
+
+// pulsante "i": finestra con le regole (apribile in qualunque momento)
+(function(){
+  const apri=()=>{ if(document.pointerLockElement) document.exitPointerLock(); $('regole').style.display='flex'; };
+  const chiudi=()=>{ $('regole').style.display='none'; if(G.gioco && !G.introVolo) canvasEl.requestPointerLock(); };
+  $('btnInfo').addEventListener('click',apri);
+  $('btnChiudiRegole').addEventListener('click',chiudi);
+})();
 /* La classifica condivisa usa il file "classifica.gs" (nella stessa cartella):
    installalo come web app Apps Script e incolla il suo URL /exec nella
    costante URL_CLASSIFICA in cima a questo file. */
