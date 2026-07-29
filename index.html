@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Canestro in Laboratorio — Sacra Famiglia</title>
 <style>
   :root{ --arancio:#e8641e; --arancio-chiaro:#ffb35c; --panel:rgba(24,14,7,.85); }
@@ -115,10 +115,30 @@
   .regole-testo p{font-size:13.5px;line-height:1.6;opacity:.92;margin:0 0 12px}
   .regole-testo b{color:var(--arancio-chiaro);font-weight:700}
   .regole-box #btnChiudiRegole{display:block;margin:16px auto 0}
+
+  /* ---- COMANDI TOUCH (iPad/telefono): joystick, sguardo, tasto TIRA ---- */
+  html.touch #scena{touch-action:none}
+  html.touch #istruzioni{display:none}
+  #joyBase{position:fixed;width:132px;height:132px;border-radius:50%;z-index:14;display:none;
+    background:rgba(18,62,144,.16);border:2px solid rgba(150,190,255,.5);pointer-events:none}
+  #joyKnob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;
+    background:rgba(143,192,255,.75);border:2px solid rgba(255,255,255,.8);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+  #btnTira{position:fixed;right:24px;bottom:120px;z-index:15;display:none;width:104px;height:104px;border-radius:50%;
+    border:3px solid rgba(255,255,255,.85);background:rgba(232,114,28,.92);color:#fff;font-size:17px;font-weight:900;
+    letter-spacing:.5px;box-shadow:0 6px 22px rgba(0,0,0,.45);-webkit-tap-highlight-color:transparent;user-select:none}
+  #btnTira.carica{background:#123E90;transform:scale(.94)}
+  html.touch #btnTira{display:block}
+  #tocTip{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:14;display:none;
+    background:rgba(6,12,28,.72);border:1px solid rgba(120,160,235,.35);color:#cfe0ff;font-size:12px;
+    padding:7px 14px;border-radius:16px;text-align:center;pointer-events:none;max-width:88vw}
+  html.touch #tocTip.on{display:block}
 </style>
 </head>
 <body>
 <canvas id="scena"></canvas>
+<div id="joyBase"><div id="joyKnob"></div></div>
+<button id="btnTira" type="button">TIRA</button>
+<div id="tocTip"></div>
 <div id="titolo" class="pann"><h1>Canestro in Laboratorio</h1><p>Sacra Famiglia — sfida a distanza</p></div>
 <div id="stato" class="pann">
   <div><div class="v" id="vPunti">0</div><div class="l">Punti</div></div>
@@ -1414,32 +1434,92 @@ const $=id=>document.getElementById(id);
 let yaw=2.2, pitch=-.06;                 // partenza rivolti verso il canestro
 const tasti={};
 camera.position.set(3.5,1.5,1.4);
+// carica/rilascio del tiro: condivisi da BARRA SPAZIO (desktop) e tasto TIRA (touch)
+function iniziaCarica(){
+  const colpiDisp = G.modo==='percorso' ? !G.tappaFatta : G.tiri>0;
+  if(G.gioco && !G.introVolo && !G.volo && colpiDisp && !G.inCarica){
+    G.inCarica=true; G.potenza=0;
+    $('barraPot').style.display='block'; $('barraPotNum').style.display='block';
+    suona(200,.05,'square',.06);
+    const b=$('btnTira'); if(b) b.classList.add('carica');
+  }
+}
+function rilasciaTiro(){
+  if(!G.inCarica) return;
+  G.inCarica=false; $('barraPot').style.display='none'; $('barraPotNum').style.display='none';
+  const b=$('btnTira'); if(b) b.classList.remove('carica');
+  tira();
+}
 addEventListener('keydown',e=>{
   tasti[e.key.toLowerCase()]=true;
   // le frecce muovono: evita lo scroll della pagina
   if(G.gioco && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
   // BARRA SPAZIO: tieni premuto per caricare il tiro
-  if(e.code==='Space'||e.key===' '){
-    e.preventDefault();
-    const colpiDisp = G.modo==='percorso' ? !G.tappaFatta : G.tiri>0;
-    if(G.gioco && !G.introVolo && !G.volo && colpiDisp && !G.inCarica){
-      G.inCarica=true; G.potenza=0;
-      $('barraPot').style.display='block'; $('barraPotNum').style.display='block';
-      suona(200,.05,'square',.06);
-    }
-  }
+  if(e.code==='Space'||e.key===' '){ e.preventDefault(); iniziaCarica(); }
 });
 addEventListener('keyup',e=>{
   tasti[e.key.toLowerCase()]=false;
   // rilascia lo spazio: lancia
-  if((e.code==='Space'||e.key===' ') && G.inCarica){
-    e.preventDefault();
-    G.inCarica=false; $('barraPot').style.display='none'; $('barraPotNum').style.display='none';
-    tira();
-  }
+  if((e.code==='Space'||e.key===' ') && G.inCarica){ e.preventDefault(); rilasciaTiro(); }
 });
 const canvasEl=document.getElementById('scena');
-canvasEl.addEventListener('click',()=>{ if(G.gioco && document.pointerLockElement!==canvasEl) canvasEl.requestPointerLock(); });
+canvasEl.addEventListener('click',()=>{ if(!TOUCH && G.gioco && document.pointerLockElement!==canvasEl) bloccaMouse(); });
+
+// ---- COMANDI TOUCH (iPad / telefono) --------------------------------------
+// Su iOS non esistono Pointer Lock né tastiera: joystick per muoversi,
+// trascinamento per mirare e tasto TIRA da tenere premuto per caricare.
+// ?touch=1 forza i comandi touch anche da desktop (per provarli senza iPad).
+const TOUCH = location.search.includes('touch=1') || matchMedia('(pointer:coarse)').matches
+           || ('ontouchstart' in window && navigator.maxTouchPoints>0);
+if(TOUCH) document.documentElement.classList.add('touch');
+function bloccaMouse(){ if(!TOUCH && canvasEl.requestPointerLock) canvasEl.requestPointerLock(); }
+const joy={attivo:false,id:null,cx:0,cy:0,dx:0,dy:0};
+const look={id:null,x:0,y:0};
+if(TOUCH){
+  const base=$('joyBase'), knob=$('joyKnob'), R=52;
+  const inGioco=()=> G.gioco && !G.introVolo;
+  canvasEl.addEventListener('touchstart',e=>{
+    if(!inGioco()) return;
+    for(const t of e.changedTouches){
+      if(t.clientX < innerWidth*0.45 && !joy.attivo){          // metà sinistra: joystick
+        joy.attivo=true; joy.id=t.identifier; joy.cx=t.clientX; joy.cy=t.clientY; joy.dx=joy.dy=0;
+        base.style.left=(t.clientX-66)+'px'; base.style.top=(t.clientY-66)+'px'; base.style.display='block';
+        knob.style.transform='translate(0,0)';
+      } else if(look.id===null){                                // metà destra: mira
+        look.id=t.identifier; look.x=t.clientX; look.y=t.clientY;
+      }
+    }
+    e.preventDefault();
+  },{passive:false});
+  canvasEl.addEventListener('touchmove',e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===joy.id){
+        let dx=t.clientX-joy.cx, dy=t.clientY-joy.cy;
+        const d=Math.hypot(dx,dy); if(d>R){ dx*=R/d; dy*=R/d; }
+        joy.dx=dx/R; joy.dy=dy/R;
+        knob.style.transform='translate('+dx.toFixed(0)+'px,'+dy.toFixed(0)+'px)';
+      } else if(t.identifier===look.id){
+        yaw   -= (t.clientX-look.x)*0.0055;
+        pitch -= (t.clientY-look.y)*0.0055;
+        pitch=Math.max(-1.1,Math.min(1.05,pitch));               // stesso limite del mouse
+        look.x=t.clientX; look.y=t.clientY;
+      }
+    }
+    e.preventDefault();
+  },{passive:false});
+  const fine=e=>{ for(const t of e.changedTouches){
+      if(t.identifier===joy.id){ joy.attivo=false; joy.id=null; joy.dx=joy.dy=0; base.style.display='none'; }
+      else if(t.identifier===look.id) look.id=null; } };
+  canvasEl.addEventListener('touchend',fine);
+  canvasEl.addEventListener('touchcancel',fine);
+  // tasto TIRA: tieni premuto per caricare, rilascia per lanciare (come la barra spazio)
+  const bt=$('btnTira');
+  bt.addEventListener('touchstart',e=>{ e.preventDefault(); iniziaCarica(); },{passive:false});
+  bt.addEventListener('touchend',  e=>{ e.preventDefault(); rilasciaTiro(); },{passive:false});
+  bt.addEventListener('touchcancel',()=>rilasciaTiro());
+  bt.addEventListener('mousedown',e=>{ e.preventDefault(); iniziaCarica(); });   // per ?touch=1 da desktop
+  addEventListener('mouseup',()=>{ if(G.inCarica) rilasciaTiro(); });
+}
 addEventListener('mousemove',e=>{
   if(document.pointerLockElement===canvasEl){
     yaw-=e.movementX*.0024; pitch-=e.movementY*.0024;
@@ -1701,7 +1781,7 @@ function avviaLibera(){
   $('avvio').style.display='none';
   G.gioco=true; G.punti=0; G.tiri=TIRI_TOT; aggiornaHud();
   avviaMusica();
-  canvasEl.requestPointerLock();
+  bloccaMouse();
 }
 $('btnGioca').onclick=avviaLibera;
 
@@ -1715,7 +1795,7 @@ function avviaPercorso(){
   markerTappe.visible=true;
   avviaMusica();
   avviaLive();
-  canvasEl.requestPointerLock();          // blocco il mouse subito (gesto utente)
+  bloccaMouse();          // blocco il mouse subito (gesto utente)
   voloIntro(()=>posizionaStazione(0));    // volo che mostra le tappe, poi la 1ª
 }
 $('btnPercorso').onclick=avviaPercorso;
@@ -1784,7 +1864,7 @@ $('btnAncora').onclick=()=>{
   if(G.modo==='percorso'){ avviaPercorso(); return; }
   G.punti=0; G.tiri=TIRI_TOT; G.gioco=true; aggiornaHud();
   avviaMusica();
-  canvasEl.requestPointerLock();
+  bloccaMouse();
 };
 function finePartita(){
   G.gioco=false; document.exitPointerLock();
@@ -1887,6 +1967,8 @@ function animate(){
     }
     if(G.introT>=1){
       G.introVolo=false;
+      if(TOUCH){ const t=$('tocTip'); t.innerHTML='<b>Dito sinistro</b>: muoviti &middot; <b>dito destro</b>: mira &middot; tieni premuto <b>TIRA</b> per caricare, rilascia per lanciare';
+        t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),9000); }
       if(G.introDone) G.introDone();
     }
     renderer.render(scene,camera);
@@ -1905,6 +1987,10 @@ function animate(){
       if(tasti['arrowdown']) nuova.addScaledVector(dir,-v);
       if(tasti['arrowleft']) nuova.addScaledVector(destra,-v);
       if(tasti['arrowright']) nuova.addScaledVector(destra,v);
+      if(TOUCH && (joy.dx||joy.dy)){          // joystick virtuale
+        nuova.addScaledVector(dir,-joy.dy*v*1.35);
+        nuova.addScaledVector(destra, joy.dx*v*1.35);
+      }
       nuova.x=Math.max(-7.5,Math.min(7.5,nuova.x));
       nuova.z=Math.max(-2.95,Math.min(2.95,nuova.z));
       if(!dentroTavolo(nuova.x,nuova.z)) camera.position.copy(nuova);
@@ -1943,7 +2029,7 @@ animate();
 // pulsante "i": finestra con le regole (apribile in qualunque momento)
 (function(){
   const apri=()=>{ if(document.pointerLockElement) document.exitPointerLock(); $('regole').style.display='flex'; };
-  const chiudi=()=>{ $('regole').style.display='none'; if(G.gioco && !G.introVolo) canvasEl.requestPointerLock(); };
+  const chiudi=()=>{ $('regole').style.display='none'; if(G.gioco && !G.introVolo) bloccaMouse(); };
   $('btnInfo').addEventListener('click',apri);
   $('btnChiudiRegole').addEventListener('click',chiudi);
 })();
