@@ -691,16 +691,18 @@ const matLegno=new THREE.MeshStandardMaterial({map:legnoTex,roughness:.55});
       trav.position.set(px,HP,zAnta-.03); scene.add(trav);
       const cima=new THREE.Mesh(new THREE.BoxGeometry(BUS.hw*2,.07,.09),matScuro);
       cima.position.set(px,2.965,zAnta-.03); scene.add(cima);
-      const vetro=new THREE.Mesh(new THREE.PlaneGeometry(BUS.hw*2-.14,3.0-HP-.12),
+      const vetro=new THREE.Mesh(new THREE.PlaneGeometry(BUS.hw*2-.10,3.0-HP-.06),
         new THREE.MeshStandardMaterial({color:0xdfe7ea,transparent:true,opacity:.32,roughness:.1,side:THREE.DoubleSide}));
-      vetro.position.set(px,(3.0+HP)/2-.02,zAnta-.03); scene.add(vetro); }
-    const antaGrande=new THREE.Mesh(new THREE.BoxGeometry(.88,HP-.09,.05),matPorta);
-    antaGrande.position.set(px-.19,(HP-.09)/2,zAnta); scene.add(antaGrande);
-    const pezzetto=new THREE.Mesh(new THREE.BoxGeometry(.34,HP-.09,.05),matPorta);
-    pezzetto.position.set(px+.44,(HP-.09)/2,zAnta); scene.add(pezzetto);
+      vetro.position.set(px,(3.0+HP)/2,zAnta-.03); scene.add(vetro); }
+    // Battenti A TENUTA: sovrapposti fra loro e dentro traverso/montanti: nessuno spiraglio.
+    const AW=.915, PW=.375, AH=HP;
+    const antaGrande=new THREE.Mesh(new THREE.BoxGeometry(AW,AH,.05),matPorta);
+    antaGrande.position.set(px-BUS.hw+AW/2,AH/2,zAnta); scene.add(antaGrande);
+    const pezzetto=new THREE.Mesh(new THREE.BoxGeometry(PW,AH,.05),matPorta);
+    pezzetto.position.set(px+BUS.hw-PW/2,AH/2,zAnta-.02); scene.add(pezzetto);
     const maniglia=new THREE.Mesh(new THREE.BoxGeometry(.14,.03,.03),
       new THREE.MeshStandardMaterial({color:0x8e9094,metalness:.7,roughness:.3}));
-    maniglia.position.set(px+.19,(HP-.09)/2,zAnta+.04); scene.add(maniglia);
+    maniglia.position.set(px-BUS.hw+AW-.08,1.05,zAnta+.04); scene.add(maniglia);
   }
 }
 // ---------- finestre + radiatori + bacheca verde (parete z=+3.35) ----------
