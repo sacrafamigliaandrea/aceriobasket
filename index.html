@@ -134,6 +134,11 @@
     letter-spacing:.5px;box-shadow:0 6px 22px rgba(0,0,0,.45);-webkit-tap-highlight-color:transparent;user-select:none}
   #btnTira.carica{background:#123E90;transform:scale(.94)}
   html.touch #btnTira{display:block}
+  #btnPalla{position:fixed;right:142px;bottom:132px;z-index:15;display:none;width:80px;height:80px;border-radius:50%;
+    border:3px solid rgba(255,255,255,.85);background:rgba(18,62,144,.9);color:#fff;font-size:10.5px;font-weight:900;
+    letter-spacing:.3px;box-shadow:0 6px 22px rgba(0,0,0,.45);-webkit-tap-highlight-color:transparent;user-select:none}
+  #btnPalla.on{background:rgba(232,114,28,.95);transform:scale(.94)}
+  html.touch #btnPalla{display:block}
   #tocTip{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:14;display:none;
     background:rgba(6,12,28,.72);border:1px solid rgba(120,160,235,.35);color:#cfe0ff;font-size:12px;
     padding:7px 14px;border-radius:16px;text-align:center;pointer-events:none;max-width:88vw}
@@ -144,6 +149,7 @@
 <canvas id="scena"></canvas>
 <div id="joyBase"><div id="joyKnob"></div></div>
 <button id="btnTira" type="button">TIRA</button>
+<button id="btnPalla" type="button">PALLEGGIA</button>
 <div id="tocTip"></div>
 <div id="titolo" class="pann"><h1>Canestro in Laboratorio</h1><p>Sacra Famiglia — sfida a distanza</p></div>
 <div id="stato" class="pann">
@@ -168,6 +174,7 @@
   <div><b>Barra spazio</b> — tieni premuto: potenza, rilascia: tiro</div>
   <div><b>Mira più in alto</b> — alzi l'arco · la scia ti guida</div>
   <div><b>V</b> — vista in terza / prima persona</div>
+  <div><b>B</b> — palleggia (camminando lo fa da solo)</div>
 </div>
 <div id="splash"></div>
 <button id="btnMusica"><svg viewBox="0 0 16 16"><path d="M6 2v8.2a2.5 2.5 0 1 0 1.5 2.3V5.5l6-1.5v5.2a2.5 2.5 0 1 0 1.5 2.3V2z"/></svg><span>Musica</span></button>
@@ -180,7 +187,7 @@
     <h2>Come si <span>gioca</span></h2>
     <div class="regole-testo">
       <p><b>Obiettivo.</b> Fare canestro nel mini canestro sopra la lavagna del laboratorio.</p>
-      <p><b>Comandi.</b> <b>Click</b> per bloccare il mouse e mirare · <b>frecce ← ↑ ↓ →</b> per muoverti (solo nei Tiri liberi) · <b>barra spazio</b>: tienila premuta per caricare la potenza e rilasciala per tirare · <b>V</b> (o il pulsante <b>Vista</b>): passi dalla terza persona, in cui vedi l'omino LEGO tirare, alla prima persona.</p>
+      <p><b>Comandi.</b> <b>Click</b> per bloccare il mouse e mirare · <b>frecce ← ↑ ↓ →</b> per muoverti (solo nei Tiri liberi) · <b>barra spazio</b>: tienila premuta per caricare la potenza e rilasciala per tirare · <b>V</b> (o il pulsante <b>Vista</b>): passi dalla terza persona, in cui vedi l'omino LEGO tirare, alla prima persona · <b>B</b> (o <b>PALLEGGIA</b>): l'omino fa rimbalzare il pallone; mentre cammina palleggia da solo e quando tiri salta.</p>
       <p><b>L'arco del tiro.</b> Mira più in alto per alzare la parabola, più in basso per un tiro teso. La <b>scia arancione</b> mostra dove cadrà la palla: aggiustala finché entra nel canestro. Da vicino serve un arco alto, da lontano più potenza.</p>
       <p><b>Tiri liberi.</b> Hai <b>8 tiri</b> e giri per l'aula: tira da dove vuoi. Più sei lontano, più vale il canestro (da <b>1 a 5 punti</b>).</p>
       <p><b>Percorso a tappe.</b> <b>8 postazioni fisse</b> a difficoltà crescente. I <b>tentativi sono infiniti</b>: superi la tappa <b>solo facendo canestro</b>. Attenzione: il valore del canestro (<b>Vale</b>) <b>parte alto e scende a ogni tiro</b> — quindi <b>meno tiri fai, più punti prendi</b>.</p>
@@ -1083,26 +1090,27 @@ const matTV=new THREE.MeshBasicMaterial({map:texQuadro()});
 // ======================================================================
 //  OMINO LEGO = IL GIOCATORE. La statua del laboratorio (foto 104: testa gialla, busto
 //  arancione con la mela, braccia rosse, mani blu, gambe verdi, piedi viola) è il
-//  protagonista: a riposo sta nel suo angolo; quando la partita comincia lascia l'angolo,
-//  indossa fascia e numero e va a tirare. In TERZA persona lo si vede da dietro con
-//  l'animazione di tiro; in PRIMA persona se ne vedono braccia e mani (tasto V o pulsante).
+//  protagonista. A riposo sta nel suo angolo; a inizio partita "si sveglia" davanti alla
+//  telecamera (RISVEGLIO), indossa fascia e numero, palleggia e va a tirare.
+//  In TERZA persona lo si vede giocare: cammina, palleggia, salta al tiro, esulta al canestro.
+//  In PRIMA persona se ne vedono braccia e mani (tasto V o pulsante Vista).
 // ======================================================================
 const OMINO_CASA={x:-7.3,z:2.55,ry:2.35};            // l'angolo di fondo, lato finestre
+const OMINO_VIA={x:-5.9,z:2.3};                      // un passo fuori dall'angolo: da qui partono i tiri liberi
 const VISTA={terza:true};
+const PALLEGGIO={on:false};                          // tasto B o pulsante PALLEGGIA tenuti premuti
 try{ const v=localStorage.getItem('canestro_vista'); if(v) VISTA.terza=(v==='3'); }catch(e){}
 function mkOminoLego(){
   const o=new THREE.Group(), corpo=new THREE.Group(); o.add(corpo);
   const abs=c=>PHY(c,{roughness:.36,clearcoat:.35,clearcoatRoughness:.3});      // plastica ABS lucida
   const cVerde=abs(0x8bc32a), cViola=abs(0x7a3f8f), cArancio=abs(0xf07818), cRosso=abs(0xd83a2a), cBlu=abs(0x33608f), cGiallo=abs(0xf5c518);
   const M=(geo,mat,par)=>{ const m=new THREE.Mesh(geo,mat); (par||corpo).add(m); return m; };
-  // gambe, piedi, bacino
-  const verdi=[], viola=[];
-  for(const sx of [-1,1]){
-    verdi.push(pezzo(rbox(.235,.56,.30,.03,3),sx*.125,.38,0));
-    viola.push(pezzo(rbox(.24,.12,.36,.03,3),sx*.125,.06,.03));
-  }
-  verdi.push(pezzo(rbox(.50,.09,.30,.03,2),0,.705,0));
-  M(unisci(verdi),cVerde); M(unisci(viola),cViola);
+  // gambe con perno alle anche (camminata), piedi viola, bacino
+  const gamba=sx=>{ const p=new THREE.Group(); p.position.set(sx*.125,.66,0); corpo.add(p);
+    M(rbox(.235,.56,.30,.03,3),cVerde,p).position.y=-.28;
+    M(rbox(.24,.12,.36,.03,3),cViola,p).position.set(0,-.60,.03); return p; };
+  const gaS=gamba(-1), gaD=gamba(1);
+  M(rbox(.50,.09,.30,.03,2),cVerde).position.y=.705;
   // busto a trapezio (più stretto alle spalle) con la mela sul petto
   { const gb=rbox(.60,.54,.32,.035,3).clone(), pb=gb.attributes.position;
     for(let i=0;i<pb.count;i++){ const t=(pb.getY(i)+.27)/.54; pb.setX(i,pb.getX(i)*(1-.2*t)); }
@@ -1110,20 +1118,20 @@ function mkOminoLego(){
   { const lc=mkCanvas(128,128); melaApple(lc.getContext('2d'),64,66,42,'#f5f0e6');
     const logo=M(new THREE.PlaneGeometry(.31,.31),STD(0xffffff,{map:tex(lc),transparent:true,roughness:.5,depthWrite:false}));
     logo.position.set(0,1.03,.1615); }
-  // testa: collo, cilindro smussato, bottoncino
+  // testa (gira sul collo): cilindro smussato e bottoncino
+  const testa=new THREE.Group(); testa.position.y=1.35; corpo.add(testa);
   M(new THREE.CylinderGeometry(.11,.11,.06,20),cGiallo).position.y=1.32;
   { const pts=[[0,0],[.15,0],[.19,.035],[.19,.305],[.15,.34],[0,.34]].map(p=>new THREE.Vector2(p[0],p[1]));
-    M(new THREE.LatheGeometry(pts,28),cGiallo).position.y=1.35; }
-  M(new THREE.CylinderGeometry(.10,.10,.07,20),cGiallo).position.y=1.725;
-  // DIVISA da giocatore (solo in partita): fascia tergisudore e numero sulla schiena
-  const divisa=new THREE.Group(); corpo.add(divisa);
-  M(new THREE.CylinderGeometry(.194,.194,.055,28,1,true),STD(0xf4f4f0,{roughness:.9}),divisa).position.y=1.60;
-  { const nc=mkCanvas(256,256), g=nc.getContext('2d');
-    g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
-    g.font='bold 40px "Helvetica Neue",Arial,sans-serif'; g.fillText('LAB',128,52);
-    g.font='900 150px "Arial Black","Helvetica Neue",Arial,sans-serif'; g.fillText('28',128,160);
-    const num=M(new THREE.PlaneGeometry(.34,.34),STD(0xffffff,{map:tex(nc),transparent:true,roughness:.6,depthWrite:false}),divisa);
-    num.position.set(0,1.03,-.1615); num.rotation.y=Math.PI; }
+    M(new THREE.LatheGeometry(pts,28),cGiallo,testa); }
+  M(new THREE.CylinderGeometry(.10,.10,.07,20),cGiallo,testa).position.y=.375;
+  // DIVISA da giocatore (compare al risveglio): fascia tergisudore e numero sulla schiena
+  const fascia=M(new THREE.CylinderGeometry(.194,.194,.055,28,1,true),STD(0xf4f4f0,{roughness:.9}),testa); fascia.position.y=.25;
+  const nc=mkCanvas(256,256), ng=nc.getContext('2d');
+  ng.fillStyle='#fff'; ng.textAlign='center'; ng.textBaseline='middle';
+  ng.font='bold 40px "Helvetica Neue",Arial,sans-serif'; ng.fillText('LAB',128,52);
+  ng.font='900 150px "Arial Black","Helvetica Neue",Arial,sans-serif'; ng.fillText('28',128,160);
+  const numero=M(new THREE.PlaneGeometry(.34,.34),STD(0xffffff,{map:tex(nc),transparent:true,roughness:.6,depthWrite:false}));
+  numero.position.set(0,1.03,-.1615); numero.rotation.y=Math.PI;
   // braccia snodate alla spalla (perno): manica rossa piegata al gomito, mano blu a pinza
   const braccio=sx=>{
     const p=new THREE.Group(); p.position.set(sx*.335,1.2,0); corpo.add(p);
@@ -1136,52 +1144,169 @@ function mkOminoLego(){
     return p;
   };
   const bS=braccio(-1), bD=braccio(1);
-  // pallone tra le mani (terza persona)
+  // pallone (terza persona): in mano, a terra nel palleggio
   const palla=M(new THREE.SphereGeometry(.10,20,16),STD(0xffffff,{map:texPalla(),roughness:.7}));
   palla.visible=false;
   { const om=new THREE.Mesh(new THREE.PlaneGeometry(.95,.95).rotateX(-Math.PI/2),
       new THREE.MeshBasicMaterial({map:TEX_OMBRA,transparent:true,opacity:.5,depthWrite:false,toneMapped:false}));
-    om.position.y=.005; om.renderOrder=1; o.add(om); }                       // ombra di contatto: resta a terra nel saltello
-  o.userData={corpo,bS,bD,palla,divisa,a:.12,g:-.06,hop:0,tL:9,volo:false};
+    om.position.y=.005; om.renderOrder=1; o.add(om); }                       // ombra di contatto: resta a terra nei salti
+  o.userData={corpo,testa,bS,bD,gaS,gaD,palla,fascia,numero,
+    aS:.12,aD:.12,gS:-.06,gD:-.06,aH:1.05,dr:0,h:1,fase:0,passo:0,vel:0,px:0,pz:0,tL:9,tF:9,volo:false,segn:false,s:0};
   return o;
 }
 const omino=mkOminoLego(); scene.add(omino);
-// posa: a = alzata delle braccia in avanti (0 = lungo i fianchi, ~2,9 = sopra la testa),
-// g = chiusura verso il centro (per stringere il pallone)
-function posaOmino(dt,aObj,gObj,conPalla){
-  const u=omino.userData, k=Math.min(1,dt*14);
-  u.a+=(aObj-u.a)*k; u.g+=(gObj-u.g)*k;
-  u.bS.rotation.set(-u.a,0, u.g); u.bD.rotation.set(-u.a,0,-u.g);
+function divisaOmino(k){                              // k: 0 = statua, 1 = giocatore (valori intermedi = comparsa)
+  const u=omino.userData, v=k>0, s=Math.max(.001,k);
+  u.fascia.visible=u.numero.visible=v; u.fascia.scale.set(s,1,s); u.numero.scale.setScalar(s);
+}
+const versoAngolo=(a,b,k)=>{ let d=(b-a)%(Math.PI*2); if(d>Math.PI) d-=Math.PI*2; if(d<-Math.PI) d+=Math.PI*2; return a+d*k; };
+// --- CUORE DELL'ANIMAZIONE: la posa nasce da pochi parametri.
+//     p = { statua, tiene (ha il pallone), palleggia, car (carica 0..1), vel (m/s), testa (giro del capo) }
+//     Braccia: a = alzata in avanti (0 lungo i fianchi, ~2,9 sopra la testa), g = chiusura verso il centro.
+function animaOmino(dt,p){
+  const u=omino.userData, k=Math.min(1,dt*16), L=(a,b,t)=>a+(b-a)*t;
+  // camminata: gambe alterne alle anche, molleggio
+  const w=Math.min(1,(p.vel||0)/1.6);
+  u.passo+=(p.vel||0)*dt*4.6;
+  const sw=Math.sin(u.passo)*w;
+  // palleggio: la fase avanza, a ogni giro il pallone tocca terra (suono)
+  u.dr+=((p.palleggia?1:0)-u.dr)*Math.min(1,dt*9);
+  const f0=u.fase; u.fase+=dt/(.52-.09*w);
+  if(u.dr>.6 && Math.floor(u.fase)!==Math.floor(f0)) suonoRimbalzo(.22);
+  const f=u.fase%1; u.h=1-(2*f-1)*(2*f-1);            // 0 = a terra, 1 = sotto la mano
+  // tiro in sospensione (tL) ed esultanza dopo il canestro (tF)
+  const DS=.62, inSalto=u.tL<DS, js=inSalto?Math.sin(Math.PI*u.tL/DS):0;
+  const festa=!inSalto && u.tF<1.2, jf=festa?Math.abs(Math.sin(Math.PI*u.tF/.4))*(1-u.tF/1.5):0;
+  const car=(p.tiene && !inSalto)?(p.car||0):0;
+  let aS,aD,gS,gD,conPalla=false;
+  if(p.statua){ aS=aD=.12; gS=gD=-.06; }
+  else if(inSalto){ aS=aD=(u.tL<.24?2.95:2.25); gS=gD=.14; }          // distensione, poi polso che "spezza"
+  else if(festa){ aS=aD=2.75; gS=gD=-.38; }                          // braccia al cielo
+  else if(!p.tiene){ aS=.3+sw*.4; aD=.3-sw*.4; gS=gD=.04; }          // segue il tiro con lo sguardo
+  else { const aH=1.05+car*1.65; u.aH+=(aH-u.aH)*k;
+    aS=L(aH,.28+sw*.4,u.dr); gS=L(.42,.04,u.dr);                      // la sinistra accompagna o cammina
+    aD=L(aH,.62+.38*u.h,u.dr); gD=L(.42,-.10,u.dr); conPalla=true; }  // la destra spinge il pallone
+  u.aS+=(aS-u.aS)*k; u.aD+=(aD-u.aD)*k; u.gS+=(gS-u.gS)*k; u.gD+=(gD-u.gD)*k;
+  u.bS.rotation.set(-u.aS,0,u.gS); u.bD.rotation.set(-u.aD,0,-u.gD);
+  const tuck=.32*js+.2*jf;                             // in volo le gambe si raccolgono
+  u.gaS.rotation.x=-sw*.55+tuck; u.gaD.rotation.x=sw*.55+tuck;
+  // corpo: si schiaccia mentre carica, si allunga nello stacco (le gambe LEGO non si piegano)
+  u.corpo.scale.y+=((1-.08*car+.06*js)-u.corpo.scale.y)*k;
+  u.corpo.position.y=.44*js+.24*jf+Math.abs(sw)*.03;
+  u.corpo.rotation.x+=((-.09*car+.08*js)-u.corpo.rotation.x)*k;
+  u.testa.rotation.y+=((p.testa||0)-u.testa.rotation.y)*k;
   u.palla.visible=conPalla;
-  if(conPalla) u.palla.position.set(0,1.2-.56*Math.cos(u.a),.56*Math.sin(u.a)+.03);
+  if(conPalla){
+    u.palla.position.set(L(0,.40,u.dr), L(1.2-.56*Math.cos(u.aH),.10+.68*u.h,u.dr), L(.56*Math.sin(u.aH)+.03,.30,u.dr));
+    u.palla.rotation.x+=dt*9*u.dr;
+  }
 }
 // a riposo (menu): statua nel suo angolo, senza divisa
 function ominoStatua(dt){
-  const u=omino.userData;
-  omino.visible=true; u.divisa.visible=false; u.corpo.position.y=0; u.corpo.rotation.x=0;
+  const u=omino.userData; u.tL=9; u.tF=9; u.vel=0;
+  omino.visible=true; divisaOmino(0);
   omino.position.set(OMINO_CASA.x,0,OMINO_CASA.z); omino.rotation.y=OMINO_CASA.ry;
-  posaOmino(dt,.12,-.06,false);
+  animaOmino(dt,{statua:true});
 }
-// durante il volo d'apertura del Percorso: fermo alla prima tappa, palla in mano, rivolto al canestro
+// volo d'apertura del Percorso: mentre la telecamera sorvola l'aula, l'omino lascia l'angolo
+// e raggiunge la prima tappa palleggiando (passando dal varco tra i tavoloni), poi aspetta lì
 function ominoInAttesa(dt){
   const u=omino.userData, s=STAZIONI[0];
-  omino.visible=true; u.divisa.visible=true; u.corpo.position.y=0; u.corpo.rotation.x=0;
-  omino.position.set(s.x,0,s.z); omino.rotation.y=Math.atan2(CANESTRO.x-s.x,CANESTRO.z-s.z);
-  posaOmino(dt,1.05,.42,true);
+  if(!u.via){ const P=[[OMINO_CASA.x,OMINO_CASA.z],[-6.4,2.25],[-0.9,2.05],[-0.9,-1.55],[-3.6,-1.95],[s.x,s.z]];
+    u.via=P; u.viaL=[0]; for(let i=1;i<P.length;i++) u.viaL.push(u.viaL[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])); }
+  const P=u.via, Ls=u.viaL, tot=Ls[Ls.length-1];
+  u.s=Math.min(tot,u.s+2.9*dt);
+  let i=1; while(i<P.length-1 && Ls[i]<u.s) i++;
+  const t=(u.s-Ls[i-1])/(Ls[i]-Ls[i-1]), x=P[i-1][0]+(P[i][0]-P[i-1][0])*t, z=P[i-1][1]+(P[i][1]-P[i-1][1])*t;
+  const arrivato=u.s>=tot-.001;
+  const ry=arrivato?Math.atan2(CANESTRO.x-x,CANESTRO.z-z):Math.atan2(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);
+  omino.visible=true; divisaOmino(1);
+  omino.position.set(x,0,z); omino.rotation.y=versoAngolo(omino.rotation.y,ry,Math.min(1,dt*8));
+  u.tL+=dt; u.tF+=dt;
+  animaOmino(dt,{tiene:true,palleggia:true,vel:arrivato?0:2.9});
 }
-// in partita: segue il giocatore; carica = braccia che salgono, rilascio = distensione e saltello
+// in partita: segue il giocatore. Cammina → palleggia; carica → pallone sopra la testa;
+// rilascio → tiro in sospensione; canestro → esultanza
 function aggiornaOmino(dt,car){
+  const u=omino.userData, x=camera.position.x, z=camera.position.z;
+  let vel=dt>0?Math.hypot(x-u.px,z-u.pz)/dt:0; if(vel>9) vel=0;        // un teletrasporto di tappa non è una corsa
+  u.px=x; u.pz=z; u.vel+=(vel-u.vel)*Math.min(1,dt*10);
+  omino.visible=VISTA.terza; divisaOmino(1);
+  omino.position.set(x,0,z); omino.rotation.y=yaw+Math.PI;
+  if(G.volo && !u.volo) u.tL=0;                         // il pallone è appena partito: stacco
+  if(G.segnato && !u.segn) u.tF=0;                      // canestro!
+  u.volo=G.volo; u.segn=G.segnato; u.tL+=dt; u.tF+=dt;
+  const haTiri=G.modo==='percorso'?!G.tappaFatta:G.tiri>0, tiene=!G.volo && haTiri;
+  animaOmino(dt,{tiene,palleggia:tiene && !G.inCarica && (u.vel>.35 || PALLEGGIO.on || tasti['b']),car,vel:u.vel});
+}
+// --- RISVEGLIO: la sorpresa d'inizio partita. Si parte dalla vista di sempre, poi la telecamera
+//     corre verso l'angolo dove la statua "si accorge" di noi, gira la testa, e con un saltello
+//     compaiono fascia, numero e pallone. Due palleggi e via: nei Tiri liberi fa un passo fuori
+//     dall'angolo e la telecamera gli scivola alle spalle; nel Percorso parte il volo sulle tappe.
+//     Dalla seconda partita la scena è abbreviata. Spazio, Invio o un tocco la saltano.
+const RISV={A:new THREE.Vector3(3.5,1.5,1.4), B:new THREE.Vector3(-4.85,1.45,2.3), T1:.7, T2:2.1, T3:2.9, T4:4.7, T5:5.6, visto:false};
+const _rcP=new THREE.Vector3(), _rcT=new THREE.Vector3(), _rcQ=new THREE.Quaternion(), _rcP2=new THREE.Vector3(), _rcQ2=new THREE.Quaternion();
+function risveglio(poi){
   const u=omino.userData;
-  omino.visible=VISTA.terza; u.divisa.visible=true;
-  omino.position.set(camera.position.x,0,camera.position.z); omino.rotation.y=yaw+Math.PI;
-  if(G.volo && !u.volo) u.tL=0;                         // il pallone è appena partito
-  u.volo=G.volo; u.tL+=dt;
-  let a,g,conPalla=false,hop=0,inc=0;
-  if(u.tL<.45){ a=2.9; g=.14; hop=.16*Math.sin(Math.PI*u.tL/.45); inc=.06; }       // rilascio
-  else if(G.volo || G.tiri<=0){ a=.45; g=.05; }                                    // segue il tiro con lo sguardo
-  else { a=1.05+car*1.65; g=.42; conPalla=true; inc=-.09*car; }                       // palla in mano / carica
-  u.corpo.position.y=hop; u.corpo.rotation.x+=(inc-u.corpo.rotation.x)*Math.min(1,dt*12);
-  posaOmino(dt,a,g,conPalla);
+  G.risveglio={t:RISV.visto?RISV.T2-.25:0, poi, pop:false, passo:G.modo!=='percorso'};
+  RISV.visto=true;
+  G.gioco=false; G.introVolo=false; G.volo=false; G.inCarica=false; palla.visible=false;
+  G.segnato=false; u.segn=false; u.volo=false;        // niente esultanze ereditate dalla partita prima
+  u.tL=9; u.tF=9; u.s=0; u.dr=0; u.vel=0; divisaOmino(0);
+  omino.position.set(OMINO_CASA.x,0,OMINO_CASA.z); omino.rotation.y=OMINO_CASA.ry;
+}
+function saltaRisveglio(){ const R=G.risveglio; if(R && R.t>.5) R.t=Math.max(R.t,(R.passo?RISV.T5:RISV.T4)-.02); }
+function animaRisveglio(dt){
+  const R=G.risveglio, u=omino.userData, K=RISV, C=OMINO_CASA; R.t+=dt;
+  const t=R.t, sm=(a,b,x)=>{ x=Math.max(0,Math.min(1,(x-a)/(b-a))); return x*x*(3-2*x); };
+  braccia.visible=false; preview.visible=false; mira3D.visible=false; omino.visible=true;
+  // telecamera: dalla vista di sempre all'angolo dell'omino
+  _rcP.lerpVectors(K.A,K.B,sm(K.T1,K.T2,t));
+  _rcT.copy(CANESTRO).lerp(_rcP2.set(C.x,1.12,C.z),sm(K.T1,K.T2-.35,t));
+  const ryCam=Math.atan2(K.B.x-C.x,K.B.z-C.z);          // dove sta la telecamera, vista dall'omino
+  let x=C.x, z=C.z, ry=C.ry, testa=0, vel=0, p;
+  if(t<K.T3){                                           // ancora statua: la testa si gira, un tremito
+    const g=sm(K.T2,K.T2+.4,t);
+    testa=versoAngolo(0,ryCam-C.ry,g)+(g>=1?Math.sin((t-K.T2)*40)*.05*(1-sm(K.T2+.4,K.T3,t)):0);
+    divisaOmino(0); p={statua:true,testa};
+  } else {
+    if(!R.pop){ R.pop=true; u.tF=.45;                   // saltello di gioia (breve) + suono + scritta
+      suona(660,.09,'triangle',.12); setTimeout(()=>suona(990,.16,'triangle',.12),95);
+      splash('L’omino LEGO scende in campo!','#ffb35c'); }
+    const c=sm(K.T3,K.T3+.3,t); divisaOmino(c*(1+.3*Math.sin(c*Math.PI)));
+    ry=versoAngolo(C.ry,ryCam,sm(K.T3,K.T3+.4,t));
+    testa=versoAngolo(0,ryCam-C.ry,1-sm(K.T3,K.T3+.4,t));
+    if(R.passo && t>K.T4){                              // tiri liberi: un passo fuori dall'angolo, verso il campo
+      const e=sm(K.T4,K.T5-.1,t); x=C.x+(OMINO_VIA.x-C.x)*e; z=C.z+(OMINO_VIA.z-C.z)*e;
+      vel=(e>0&&e<1)?1.8:0;
+      ry=versoAngolo(ryCam,Math.atan2(CANESTRO.x-OMINO_VIA.x,CANESTRO.z-OMINO_VIA.z),sm(K.T4+.25,K.T5,t));
+    }
+    p={tiene:true,palleggia:t>K.T3+.8,vel,testa};   // poi due palleggi guardando la telecamera
+  }
+  u.tL+=dt; u.tF+=dt;
+  omino.position.set(x,0,z); omino.rotation.y=ry; animaOmino(dt,p);
+  camera.fov=82-22*sm(K.T1,K.T2,t); camera.position.copy(_rcP); camera.lookAt(_rcT);
+  if(R.passo && t>K.T4){                                // la telecamera scivola nella posa di gioco
+    _rcQ.copy(camera.quaternion);
+    const f0=camera.fov; statoInizialeGioco();
+    if(VISTA.terza) cameraTerza();
+    _rcP2.copy(camera.position); _rcQ2.copy(camera.quaternion); const f1=camera.fov;
+    const e=sm(K.T4+.1,K.T5,t);
+    camera.position.lerpVectors(_rcP,_rcP2,e); camera.quaternion.copy(_rcQ).slerp(_rcQ2,e); camera.fov=f0+(f1-f0)*e;
+  }
+  camera.updateProjectionMatrix();
+  if(t>=(R.passo?K.T5:K.T4)){                           // fine: comincia la partita
+    G.risveglio=null;
+    statoInizialeGioco(); camera.updateProjectionMatrix();
+    u.px=camera.position.x; u.pz=camera.position.z; u.vel=0; u.s=0; u.tF=9; u.tL=9; divisaOmino(1);
+    R.poi();
+  }
+}
+// posizione e sguardo con cui il giocatore entra in campo: un passo fuori dall'angolo, verso il canestro
+function statoInizialeGioco(){
+  camera.fov=82; camera.position.set(OMINO_VIA.x,1.5,OMINO_VIA.z);
+  yaw=Math.atan2(-(CANESTRO.x-OMINO_VIA.x),-(CANESTRO.z-OMINO_VIA.z)); pitch=.3;
+  camera.rotation.order='YXZ'; camera.rotation.set(pitch,yaw,0);
 }
 // --- TELECAMERA IN TERZA PERSONA. La logica del gioco usa camera.position come posizione del
 //     giocatore: qui la camera viene spostata SOLO per il fotogramma e poi rimessa a posto.
@@ -2087,6 +2212,7 @@ addEventListener('keydown',e=>{
   // BARRA SPAZIO: tieni premuto per caricare il tiro
   if(e.code==='Space'||e.key===' '){ e.preventDefault(); iniziaCarica(); }
   if(G.gioco && e.key.toLowerCase()==='v') cambiaVista();   // V: prima / terza persona
+  if(G.risveglio && (e.code==='Space'||e.code==='Enter')) saltaRisveglio();   // salta la scena d'apertura
 });
 addEventListener('keyup',e=>{
   tasti[e.key.toLowerCase()]=false;
@@ -2275,6 +2401,7 @@ function tornaAlMenu(){
   if(G.modo==='percorso'){ try{ inviaHeartbeat(true); }catch(e){} }
   fermaLive();
   G.gioco=false; G.introVolo=false; G.volo=false; G.inCarica=false;
+  G.risveglio=null; camera.fov=82; camera.updateProjectionMatrix();
   document.exitPointerLock();
   markerTappe.visible=false; preview.visible=false; mira3D.visible=false;
   if(typeof braccia!=='undefined') braccia.visible=false;
@@ -2289,6 +2416,13 @@ $('btnEsci').addEventListener('click',tornaAlMenu);
 // cambio vista: blur() perché la barra spazio non 'riclicchi' il pulsante rimasto a fuoco
 $('btnVista').addEventListener('click',e=>{ cambiaVista(); e.currentTarget.blur(); if(G.gioco && !G.introVolo) bloccaMouse(); });
 applicaVista();
+canvasEl.addEventListener('pointerdown',()=>saltaRisveglio());        // un tocco salta la scena d'apertura
+{ // PALLEGGIA (touch): finché lo tieni premuto l'omino fa rimbalzare il pallone
+  const bp=$('btnPalla'), su=e=>{ e.preventDefault(); PALLEGGIO.on=true; bp.classList.add('on'); },
+        giu=()=>{ PALLEGGIO.on=false; bp.classList.remove('on'); };
+  bp.addEventListener('touchstart',su,{passive:false}); bp.addEventListener('touchend',giu); bp.addEventListener('touchcancel',giu);
+  bp.addEventListener('mousedown',su); addEventListener('mouseup',giu);
+}
 function mostraClassifica(righe,live){
   const h2=$('classifica').querySelector('h2'); if(h2) h2.textContent='Classifica';
   const top=righe.slice().sort((a,b)=>b.p-a.p).slice(0,12);
@@ -2414,9 +2548,11 @@ function avviaLibera(){
   G.nome=($('nome').value.trim()||'Anonimo').slice(0,16);
   G.modo='libera'; G.introVolo=false; markerTappe.visible=false;
   $('avvio').style.display='none';
-  G.gioco=true; G.punti=0; G.tiri=TIRI_TOT; aggiornaHud();
+  G.punti=0; G.tiri=TIRI_TOT; aggiornaHud();
   avviaMusica();
   bloccaMouse();
+  // la partita comincia col RISVEGLIO dell'omino nel suo angolo: il gioco parte quando ha finito
+  risveglio(()=>{ G.gioco=true; aggiornaHud(); });
 }
 $('btnGioca').onclick=avviaLibera;
 
@@ -2426,12 +2562,12 @@ function avviaPercorso(){
   G.nome=($('nome').value.trim()||'Anonimo').slice(0,16);
   G.modo='percorso';
   $('avvio').style.display='none';
-  G.gioco=true; G.punti=0; G.tappa=0;
-  markerTappe.visible=true;
+  G.punti=0; G.tappa=0;
   avviaMusica();
   avviaLive();
   bloccaMouse();          // blocco il mouse subito (gesto utente)
-  voloIntro(()=>posizionaStazione(0));    // volo che mostra le tappe, poi la 1ª
+  // prima il RISVEGLIO dell'omino, poi il volo che mostra le tappe (lui intanto raggiunge la 1ª)
+  risveglio(()=>{ G.gioco=true; markerTappe.visible=true; voloIntro(()=>posizionaStazione(0)); });
 }
 $('btnPercorso').onclick=avviaPercorso;
 
@@ -2601,6 +2737,8 @@ function animate(){
   regolaQualita();
   const dt=Math.min(clock.getDelta(),.05);
   if(markerTappe.visible) pulsaMarker(clock.elapsedTime);
+  // RISVEGLIO dell'omino LEGO: la scena d'apertura di ogni partita
+  if(G.risveglio){ animaRisveglio(dt); if(G.risveglio){ aggiornaRete(dt); renderer.render(scene,camera); return; } }
   // VOLO INIZIALE del Percorso: la telecamera sorvola le tappe e atterra
   if(G.introVolo){
     G.introT=Math.min(1,G.introT+dt/G.introDur);
@@ -2665,8 +2803,9 @@ function animate(){
     pallaMano.visible=!G.volo;
     const car=G.inCarica?G.potenza:0;
     braccia.position.y=car*.05;
-    pallaMano.position.set(0,-.32+car*.12,-.5+car*.06);
     aggiornaOmino(dt,car);                               // l'omino LEGO segue il giocatore e tira con lui
+    { const ou=omino.userData;                           // in prima persona il palleggio si vede dal pallone che scende e risale
+      pallaMano.position.set(0,-.32+car*.12-ou.dr*(1-ou.h)*1.1,-.5+car*.06); }
     // anteprima traiettoria: visibile quando puoi tirare (non in volo)
     const mostraGuida=!G.volo && G.tiri>0;
     preview.visible=mostraGuida; mira3D.visible=mostraGuida;
